@@ -11,10 +11,10 @@
 		   XCB_EVENT_MASK_BUTTON_PRESS   | \
 		   XCB_EVENT_MASK_BUTTON_RELEASE
 
-void error(const char *msg, xcb_connection_t *conn);
-xcb_connection_t *connect(int *screen_pref);
-xcb_screen_t *get_screen_display(xcb_connection_t *conn, int screen_num);
-int grab_pointer(xcb_connection_t *conn, xcb_window_t win);
+static void error(const char *msg, xcb_connection_t *conn);
+static xcb_connection_t *connect(int *screen_pref);
+static xcb_screen_t *get_screen(xcb_connection_t *conn, int screen_num);
+static int grab_pointer(xcb_connection_t *conn, xcb_window_t win);
 
 void error(const char *msg, xcb_connection_t *conn)
 {
@@ -91,8 +91,7 @@ int main(int argc, char *argv[])
 	uint32_t              vmask;
 	uint32_t              vlist[3];
 
-	//conn = connect(&screen_num);
-	conn = xcb_connect(NULL, &screen_num);
+	conn = connect(&screen_num);
 	screen = get_screen(conn, screen_num);
 
 
