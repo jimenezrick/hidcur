@@ -18,6 +18,9 @@ typedef struct {
 	int               screen_num;
 } x_connection_t;
 
+//
+// XXX: hay que usar las *_checked()? hay que comprobar siempre el error despues de la llamada?
+//
 
 // XXX XXX XXX
 // static ...
@@ -39,7 +42,7 @@ x_connection_t x_connect(void)
 	x_connection_t xconn;
 
 	xconn.conn = xcb_connect(NULL, &xconn.screen_num);
-	if (!xconn.conn) error("couldn't connect to server", xconn);
+	if (!xconn.conn) error("can't connect to server", xconn);
 	set_screen(&xconn);
 
 	return xconn;
@@ -62,7 +65,7 @@ void set_screen(x_connection_t *xconn)
 			break;
 		}
 	}
-	if (!xconn->screen) error("couldn't find screen", *xconn);
+	if (!xconn->screen) error("can't find screen", *xconn);
 }
 
 bool grab_pointer(x_connection_t xconn)
@@ -76,7 +79,7 @@ bool grab_pointer(x_connection_t xconn)
 				  XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_WINDOW_NONE,
 				  XCB_CURSOR_NONE, XCB_TIME_CURRENT_TIME);
 	reply = xcb_grab_pointer_reply(xconn.conn, cookie, &err);
-	if (err) error("couldn't grab pointer", xconn);
+	if (err) error("can't grab pointer", xconn);
 	if (reply->status != XCB_GRAB_STATUS_SUCCESS)
 		return false;
 
@@ -96,14 +99,14 @@ void restore_cursor(x_connection_t xconn)
 	font = xcb_generate_id(xconn.conn);
 	cookie = xcb_open_font_checked(xconn.conn, font, strlen("cursor"), "cursor");
 	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("couldn't load cursor font", xconn);
+	if (err) error("can't load cursor font", xconn);
 
 	cursor = xcb_generate_id(xconn.conn);
 	cookie = xcb_create_glyph_cursor_checked(xconn.conn, cursor, font, font,
 						 CURSOR_CHAR, CURSOR_CHAR + 1, 0, 0, 0,
 						 UINT16_MAX, UINT16_MAX, UINT16_MAX);
 	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("couldn't create glyph cursor", xconn);
+	if (err) error("can't create glyph cursor", xconn);
 
 	vmask = XCB_GC_FOREGROUND | XCB_GC_BACKGROUND | XCB_GC_FONT;
 	vlist[0] = xconn.screen->black_pixel;
@@ -113,12 +116,24 @@ void restore_cursor(x_connection_t xconn)
 	gc = xcb_generate_id(xconn.conn);
 	cookie = xcb_create_gc_checked(xconn.conn, gc, xconn.screen->root, vmask, vlist);
 	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("couldn't create graphics context", xconn);
+	if (err) error("can't create graphics context", xconn);
 
 	cookie = xcb_change_window_attributes_checked(xconn.conn, xconn.screen->root,
 						      XCB_CW_CURSOR, &cursor);
 	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("xcb_change_window_attributes_checked()", xconn);
+	if (err) error("can't change window attributes", xconn);
+
+	cookie = xcb_free_gc_checked(xconn.conn, gc);
+	err = xcb_request_check(xconn.conn, cookie);
+	if (err) error("can't free graphics context", xconn);
+
+	cookie = xcb_free_cursor_checked(xconn.conn, cursor);
+	err = xcb_request_check(xconn.conn, cookie);
+	if (err) error("can't free cursor", xconn);
+
+	cookie = xcb_close_font_checked(xconn.conn, font);
+	err = xcb_request_check(xconn.conn, cookie);
+	if (err) error("can't close font", xconn);
 }
 
 int main(int argc, char *argv[])
