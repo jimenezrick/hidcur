@@ -162,7 +162,6 @@ int main(int argc, char *argv[])
 
 
 	/*
-
 	pixmap = xcb_generate_id(conn);
 	cookie = xcb_create_pixmap_checked(conn, 1, pixmap, screen->root, 1, 1);
 	err = xcb_request_check(conn, cookie);
