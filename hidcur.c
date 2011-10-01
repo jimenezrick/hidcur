@@ -1,9 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
+#include <string.h>
+#include <stdbool.h>
 #include <stdint.h>
+
 #include <xcb/xcb.h>
+
+#define MOUSE_MASK XCB_EVENT_MASK_POINTER_MOTION | \
+		   XCB_EVENT_MASK_BUTTON_PRESS   | \
+		   XCB_EVENT_MASK_BUTTON_RELEASE
+
+void error(const char *msg, xcb_connection_t *conn);
+xcb_connection_t *connect(int *screen_pref);
+xcb_screen_t *get_screen_display(xcb_connection_t *conn, int screen_num);
+int grab_pointer(xcb_connection_t *conn, xcb_window_t win);
 
 void error(const char *msg, xcb_connection_t *conn)
 {
@@ -13,39 +24,80 @@ void error(const char *msg, xcb_connection_t *conn)
 	exit(EXIT_FAILURE);
 }
 
+xcb_connection_t *connect(int *screen_pref)
+{
+	xcb_connection_t *conn;
+
+	conn = xcb_connect(NULL, screen_pref);
+	if (!conn) error("couldn't connect to the server", NULL);
+
+	return conn;
+}
+
+xcb_screen_t *get_screen(xcb_connection_t *conn, int screen_num)
+{
+	xcb_screen_iterator_t it;
+	xcb_screen_t         *screen = NULL;
+
+	it = xcb_setup_roots_iterator(xcb_get_setup(conn));
+	for (; it.rem; xcb_screen_next(&it), screen_num--) {
+		if (!screen_num) {
+			screen = it.data;
+			break;
+		}
+	}
+	if (!screen) error("couldn't find the screen", conn);
+
+	return screen;
+}
+
+int grab_pointer(xcb_connection_t *conn, xcb_window_t win)
+{
+	xcb_grab_pointer_cookie_t cookie;
+	xcb_grab_pointer_reply_t *reply;
+	xcb_generic_error_t      *err;
+
+	// TODO: probar owner_events = true, confine_to = root_win
+	cookie = xcb_grab_pointer(conn, false, win, MOUSE_MASK, XCB_GRAB_MODE_ASYNC,
+				  XCB_GRAB_MODE_ASYNC, XCB_WINDOW_NONE, XCB_CURSOR_NONE,
+				  XCB_TIME_CURRENT_TIME);
+	reply = xcb_grab_pointer_reply(conn, cookie, &err);
+	if (err) error("couldn't grab the pointer", conn);
+	if (reply->status != XCB_GRAB_STATUS_SUCCESS)
+		return -1;
+
+	return 0;
+}
+
+
+
+
+
+
 int main(int argc, char *argv[])
 {
 	xcb_connection_t     *conn;
-	const xcb_setup_t    *setup;
-	xcb_screen_iterator_t screen_iter;
-	xcb_screen_t         *screen = NULL;
+	xcb_screen_t         *screen;
+	int                   screen_num;
+
+
 	xcb_font_t            font;
 	xcb_cursor_t          cursor;
 	xcb_gcontext_t        gc;
 	xcb_pixmap_t          pixmap;
 	xcb_void_cookie_t     cookie;
 	xcb_generic_error_t  *err;
-	int                   screen_num;
 	int                   cursor_glyph = 68;
 	uint32_t              vmask;
 	uint32_t              vlist[3];
 
+	//conn = connect(&screen_num);
 	conn = xcb_connect(NULL, &screen_num);
-	if (!conn) error("xcb_connect()", NULL);
+	screen = get_screen(conn, screen_num);
 
-	printf("Connection established, screen_num = %i\n", screen_num);
 
-	setup = xcb_get_setup(conn);
-	if (!setup) error("xcb_get_setup()", conn);
 
-	screen_iter = xcb_setup_roots_iterator(setup);
-	for (; screen_iter.rem > 0; xcb_screen_next(&screen_iter), screen_num--) {
-		if (screen_num == 0) {
-			screen = screen_iter.data;
-			break;
-		}
-	}
-	if (!screen) error("can't get current screen", conn);
+
 
 	/*
 	 * Hide the mouse
