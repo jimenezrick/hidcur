@@ -1,0 +1,11 @@
+                                                      ()-()
+                                                       \"/
+  hidcur - Utility for hiding the mouse cursor in X11   `
+=======================================================
+
+
+
+ Dependencies
+--------------
+
+Just the XCB library.
