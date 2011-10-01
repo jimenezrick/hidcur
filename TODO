@@ -1,0 +1,5 @@
+- Option `-h' show help.
+- Option `-i' seconds interval.
+- Option `-c' pixel color.
+- Option `-k' kill PID.
+- Write `.hidcur.pid'.

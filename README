@@ -9,3 +9,27 @@
 --------------
 
 Just the XCB library.
+
+
+ Pseudo-algo
+-------------
+
+rw = root_win(conn, default_scr)
+mask = pointer_motion_event | pointer_press_button_event | pointer_unpress_button_event
+subscribe(conn, mask)
+
+/*
+ * Tras al último evento, arrancar un temporizador de 10s, si no llega
+ * ningún evento en ese plazo, esconder el cursor.
+ */
+
+cur = load_null_cursor(conn)
+grab_pointer(conn, rw, false, mask, grab_async, grab_async, rw, cur, current_time)
+subscribe(conn, mask)
+
+/*
+ * Cuando llegue cualquier nuevo evento, volver a mostrar el cursor.
+ */
+
+ungrab_pointer(conn)
+reset_cursor(conn)
