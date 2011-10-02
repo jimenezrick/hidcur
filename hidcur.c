@@ -28,6 +28,7 @@ static bool grab_pointer(x_connection_t xconn);
 static void ungrab_pointer(x_connection_t xconn);
 static void restore_cursor(x_connection_t xconn);
 static void hide_cursor(x_connection_t xconn);
+static xcb_window_t get_input_focus(x_connection_t xconn);
 
 static void error(const char *msg, x_connection_t xconn)
 {
@@ -187,7 +188,7 @@ static void hide_cursor(x_connection_t xconn)
 	if (err) error("can't free pixmap", xconn);
 }
 
-xcb_window_t get_input_focus(x_connection_t xconn)
+static xcb_window_t get_input_focus(x_connection_t xconn)
 {
 	xcb_get_input_focus_cookie_t cookie;
 	xcb_get_input_focus_reply_t *reply;
