@@ -152,7 +152,7 @@ static void hide_cursor(x_connection_t xconn)
 	if (err) error("can't create pixmap", xconn);
 
 	gc = xcb_generate_id(xconn.conn);
-	cookie = xcb_create_gc_checked(xconn.conn, gc, xconn.screen->root,
+	cookie = xcb_create_gc_checked(xconn.conn, gc, pixmap,
 				       XCB_GC_FUNCTION, &fun);
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't create graphics context", xconn);
@@ -214,6 +214,13 @@ int main(int argc, char *argv[])
 	ungrab_pointer(xconn);
 	restore_cursor(xconn);
 	disconnect_x(xconn);
+
+	// XXX XXX XXX
+    /*
+     * each screen needs its own empty cursor.
+     * note each real root id so can find which screen we are on
+     */
+	// XXX XXX XXX
 
 	return EXIT_SUCCESS;
 }
