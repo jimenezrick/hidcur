@@ -20,6 +20,12 @@ typedef struct {
 	int               screen_num;
 } x_connection_t;
 
+typedef struct {
+	xcb_window_t root_win, child_win;
+	bool         same_screen;
+	int16_t      x, y;
+} pointer_info_t;
+
 static void error(const char *msg, x_connection_t xconn);
 static x_connection_t connect_x(void);
 static void disconnect_x(x_connection_t xconn);
@@ -29,6 +35,7 @@ static void ungrab_pointer(x_connection_t xconn);
 static void restore_cursor(x_connection_t xconn);
 static void hide_cursor(x_connection_t xconn);
 static xcb_window_t get_input_focus(x_connection_t xconn);
+static pointer_info_t query_pointer(x_connection_t xconn, xcb_window_t win);
 
 static void error(const char *msg, x_connection_t xconn)
 {
@@ -202,9 +209,31 @@ static xcb_window_t get_input_focus(x_connection_t xconn)
 	return focus;
 }
 
+static pointer_info_t query_pointer(x_connection_t xconn, xcb_window_t win)
+{
+	xcb_query_pointer_cookie_t cookie;
+	xcb_query_pointer_reply_t *reply;
+	xcb_generic_error_t       *err;
+	pointer_info_t             info;
+
+	cookie = xcb_query_pointer(xconn.conn, win);
+	reply = xcb_query_pointer_reply(xconn.conn, cookie, &err);
+	if (err) error("can't query pointer", xconn);
+
+	info.root_win = reply->root;
+	info.child_win = reply->child;
+	info.same_screen = reply->same_screen;
+	info.x = reply->root_x;
+	info.y = reply->root_y;
+	free(reply);
+
+	return info;
+}
+
 int main(int argc, char *argv[])
 {
 	x_connection_t xconn;
+	pointer_info_t info;
 
 	xconn = connect_x();
 	if (!grab_pointer(xconn))
@@ -215,12 +244,12 @@ int main(int argc, char *argv[])
 	restore_cursor(xconn);
 	disconnect_x(xconn);
 
-	// XXX XXX XXX
-    /*
-     * each screen needs its own empty cursor.
-     * note each real root id so can find which screen we are on
-     */
-	// XXX XXX XXX
+	/*
+	 * XXX XXX XXX
+	 * each screen needs its own empty cursor.
+	 * note each real root id so can find which screen we are on
+	 * XXX XXX XXX
+	 */
 
 	return EXIT_SUCCESS;
 }
