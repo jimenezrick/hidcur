@@ -18,12 +18,14 @@ typedef struct {
 	int               screen_num;
 } x_connection_t;
 
-// XXX XXX XXX
-// Cabeceras static:
+static void error(const char *msg, x_connection_t xconn);
+static x_connection_t connect_x(void);
 static void disconnect_x(x_connection_t xconn);
 static void set_screen(x_connection_t *xconn);
-// XXX XXX XXX
-
+static bool grab_pointer(x_connection_t xconn);
+static void ungrab_pointer(x_connection_t xconn);
+static void restore_cursor(x_connection_t xconn);
+static void hide_cursor(x_connection_t xconn);
 
 static void error(const char *msg, x_connection_t xconn)
 {
@@ -100,11 +102,8 @@ static void restore_cursor(x_connection_t xconn)
 {
 	xcb_font_t           font;
 	xcb_cursor_t         cursor;
-	xcb_gcontext_t       gc;
 	xcb_void_cookie_t    cookie;
 	xcb_generic_error_t *err;
-	uint32_t             vmask;
-	uint32_t             vlist[3];
 
 	font = xcb_generate_id(xconn.conn);
 	cookie = xcb_open_font_checked(xconn.conn, font, strlen("cursor"), "cursor");
@@ -118,24 +117,10 @@ static void restore_cursor(x_connection_t xconn)
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't create glyph cursor", xconn);
 
-	vmask = XCB_GC_FOREGROUND | XCB_GC_BACKGROUND | XCB_GC_FONT;
-	vlist[0] = xconn.screen->black_pixel;
-	vlist[1] = xconn.screen->white_pixel;
-	vlist[2] = font;
-
-	gc = xcb_generate_id(xconn.conn);
-	cookie = xcb_create_gc_checked(xconn.conn, gc, xconn.screen->root, vmask, vlist);
-	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("can't create graphics context", xconn);
-
 	cookie = xcb_change_window_attributes_checked(xconn.conn, xconn.screen->root,
 						      XCB_CW_CURSOR, &cursor);
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't change window attributes", xconn);
-
-	cookie = xcb_free_gc_checked(xconn.conn, gc);
-	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("can't free graphics context", xconn);
 
 	cookie = xcb_free_cursor_checked(xconn.conn, cursor);
 	err = xcb_request_check(xconn.conn, cookie);
@@ -150,43 +135,25 @@ static void hide_cursor(x_connection_t xconn)
 {
 	xcb_pixmap_t         pixmap;
 	xcb_cursor_t         cursor;
-	xcb_gcontext_t       gc;
 	xcb_void_cookie_t    cookie;
 	xcb_generic_error_t *err;
 
 	pixmap = xcb_generate_id(xconn.conn);
-	cookie = xcb_create_pixmap_checked(xconn.conn, 1, pixmap, xconn.screen->root, 1, 1);
+	cookie = xcb_create_pixmap_checked(xconn.conn, 1, pixmap,
+					   xconn.screen->root, 1, 1);
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't create pixmap", xconn);
 
 	cursor = xcb_generate_id(xconn.conn);
-	cookie = xcb_create_cursor_checked(xconn.conn, cursor, pixmap, pixmap, 0, 0, 0, 0, 0, 0, 0, 0);
+	cookie = xcb_create_cursor_checked(xconn.conn, cursor, pixmap, pixmap,
+					   0, 0, 0, 0, 0, 0, 0, 0);
 	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("xcb_create_cursor_checked()", xconn);
+	if (err) error("can't create cursor", xconn);
 
-
-
-
-	// XXX: borrar GC? arriba tambien
-	gc = xcb_generate_id(xconn.conn);
-	cookie = xcb_create_gc_checked(xconn.conn, gc, xconn.screen->root, 0, NULL);
+	cookie = xcb_change_window_attributes_checked(xconn.conn, xconn.screen->root,
+						      XCB_CW_CURSOR, &cursor);
 	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("xcb_create_gc_checked()", xconn);
-
-	cookie = xcb_change_window_attributes_checked(xconn.conn, xconn.screen->root, XCB_CW_CURSOR, &cursor);
-	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("xcb_change_window_attributes_checked()", xconn);
-	// XXX XXX XXX XXX XXX XXX XXX XXX
-
-
-
-
-
-
-
-	cookie = xcb_free_gc_checked(xconn.conn, gc);
-	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("can't free graphics context", xconn);
+	if (err) error("can't change window attributes", xconn);
 
 	xcb_free_cursor_checked(xconn.conn, cursor);
 	err = xcb_request_check(xconn.conn, cookie);
@@ -202,7 +169,8 @@ int main(int argc, char *argv[])
 	x_connection_t xconn;
 
 	xconn = connect_x();
-	grab_pointer(xconn);
+	if (!grab_pointer(xconn))
+		error("isn't possible to grab pointer", xconn);
 	hide_cursor(xconn);
 	sleep(4);
 	ungrab_pointer(xconn);
