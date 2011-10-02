@@ -74,12 +74,13 @@ static bool grab_pointer(x_connection_t xconn)
 	xcb_grab_pointer_reply_t *reply;
 	xcb_generic_error_t      *err;
 
-	// TODO: probar owner_events = true, confine_to = root_win
+	// TODO: probar owner_events = true, confine_to = root_win, mirar que significa
 	cookie = xcb_grab_pointer(xconn.conn, false, xconn.screen->root, MOUSE_MASK,
 				  XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_WINDOW_NONE,
 				  XCB_CURSOR_NONE, XCB_TIME_CURRENT_TIME);
 	reply = xcb_grab_pointer_reply(xconn.conn, cookie, &err);
 	if (err) error("can't grab pointer", xconn);
+
 	if (reply->status != XCB_GRAB_STATUS_SUCCESS) {
 		free(reply);
 
@@ -184,6 +185,23 @@ static void hide_cursor(x_connection_t xconn)
 	xcb_free_pixmap_checked(xconn.conn, pixmap);
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't free pixmap", xconn);
+}
+
+xcb_window_t get_input_focus(x_connection_t xconn)
+{
+	xcb_get_input_focus_cookie_t cookie;
+	xcb_get_input_focus_reply_t *reply;
+	xcb_generic_error_t         *err;
+	xcb_window_t                 focus;
+
+	cookie = xcb_get_input_focus(xconn.conn);
+	reply = xcb_get_input_focus_reply(xconn.conn, cookie, &err);
+	if (err) error("can't get input focus", xconn);
+
+	focus = reply->focus;
+	free(reply);
+
+	return focus;
 }
 
 int main(int argc, char *argv[])
