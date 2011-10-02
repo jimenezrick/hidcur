@@ -149,7 +149,7 @@ static void hide_cursor(x_connection_t xconn)
 
 
 
-	/*
+	/* XXX: el pixmap se inicializa a 0's por defecto? NO!, probar a ponerlo a 1's
 	xcb_rectangle_t r = {.x = 0, .y = 0, .width = 2, .height = 2};
 	xcb_gcontext_t  gc;
 	uint32_t        vmask, vlist[2];
