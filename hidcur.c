@@ -20,7 +20,7 @@ typedef struct {
 
 // XXX XXX XXX
 // Cabeceras static:
-static void x_disconnect(x_connection_t xconn);
+static void disconnect_x(x_connection_t xconn);
 static void set_screen(x_connection_t *xconn);
 // XXX XXX XXX
 
@@ -28,12 +28,12 @@ static void set_screen(x_connection_t *xconn);
 void error(const char *msg, x_connection_t xconn)
 {
 	fprintf(stderr, "Error: %s\n", msg);
-	if (xconn.conn) x_disconnect(xconn);
+	if (xconn.conn) disconnect_x(xconn);
 
 	exit(EXIT_FAILURE);
 }
 
-x_connection_t x_connect(void)
+x_connection_t connect_x(void)
 {
 	x_connection_t xconn;
 
@@ -44,7 +44,7 @@ x_connection_t x_connect(void)
 	return xconn;
 }
 
-void x_disconnect(x_connection_t xconn)
+void disconnect_x(x_connection_t xconn)
 {
 	xcb_disconnect(xconn.conn);
 }
@@ -194,12 +194,12 @@ int main(int argc, char *argv[])
 {
 	x_connection_t xconn;
 
-	xconn = x_connect();
+	xconn = connect_x();
 	//grab_pointer(xconn);
 	//ungrab_pointer(xconn);
 	//hide_cursor(xconn);
 	restore_cursor(xconn);
-	x_disconnect(xconn);
+	disconnect_x(xconn);
 
 	return EXIT_SUCCESS;
 }
