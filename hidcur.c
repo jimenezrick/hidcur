@@ -148,12 +148,9 @@ void restore_cursor(x_connection_t xconn)
 	if (err) error("can't close font", xconn);
 }
 
-int main(int argc, char *argv[])
+void hide_cursor(x_connection_t xconn)
 {
-	x_connection_t xconn;
-
 	/*
-
 	xcb_font_t            font;
 	xcb_cursor_t          cursor;
 	xcb_gcontext_t        gc;
@@ -164,14 +161,6 @@ int main(int argc, char *argv[])
 	uint32_t              vmask;
 	uint32_t              vlist[3];
 	*/
-
-	xconn = x_connect();
-	//grab_pointer(xconn);
-	restore_cursor(xconn);
-	x_disconnect(xconn);
-
-	return EXIT_SUCCESS;
-
 
 	/*
 	pixmap = xcb_generate_id(conn);
@@ -199,4 +188,18 @@ int main(int argc, char *argv[])
 	xcb_free_gc(conn, gc);
 	xcb_free_cursor(conn, cursor);
 	*/
+}
+
+int main(int argc, char *argv[])
+{
+	x_connection_t xconn;
+
+	xconn = x_connect();
+	//grab_pointer(xconn);
+	//ungrab_pointer(xconn);
+	//hide_cursor(xconn);
+	restore_cursor(xconn);
+	x_disconnect(xconn);
+
+	return EXIT_SUCCESS;
 }
