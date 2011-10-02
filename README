@@ -8,11 +8,11 @@
  Dependencies
 --------------
 
-Just the XCB library.
+The XCB and Xlib libraries.
 
 
- Pseudo-algo
--------------
+ Pseudo-algorithm
+------------------
 
 rw = root_win(conn, default_scr)
 mask = pointer_motion_event | pointer_press_button_event | pointer_unpress_button_event

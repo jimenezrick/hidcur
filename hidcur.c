@@ -35,7 +35,8 @@ static void ungrab_pointer(x_connection_t xconn);
 static void restore_cursor(x_connection_t xconn);
 static void hide_cursor(x_connection_t xconn);
 static xcb_window_t get_input_focus(x_connection_t xconn);
-static pointer_info_t query_pointer(x_connection_t xconn, xcb_window_t win);
+static pointer_info_t query_pointer(x_connection_t xconn);
+static xcb_window_t create_window(x_connection_t xconn);
 
 static void error(const char *msg, x_connection_t xconn)
 {
@@ -209,14 +210,14 @@ static xcb_window_t get_input_focus(x_connection_t xconn)
 	return focus;
 }
 
-static pointer_info_t query_pointer(x_connection_t xconn, xcb_window_t win)
+static pointer_info_t query_pointer(x_connection_t xconn)
 {
 	xcb_query_pointer_cookie_t cookie;
 	xcb_query_pointer_reply_t *reply;
 	xcb_generic_error_t       *err;
 	pointer_info_t             info;
 
-	cookie = xcb_query_pointer(xconn.conn, win);
+	cookie = xcb_query_pointer(xconn.conn, get_input_focus(xconn));
 	reply = xcb_query_pointer_reply(xconn.conn, cookie, &err);
 	if (err) error("can't query pointer", xconn);
 
@@ -230,12 +231,33 @@ static pointer_info_t query_pointer(x_connection_t xconn, xcb_window_t win)
 	return info;
 }
 
+static xcb_window_t create_window(x_connection_t xconn)
+{
+	xcb_void_cookie_t cookie;
+	xcb_window_t      win;
+
+
+	/*
+	wid = xcb_generate_id(xconn.conn);
+	*/
+
+
+
+
+
+
+
+	return win;
+}
+
 int main(int argc, char *argv[])
 {
 	x_connection_t xconn;
 	pointer_info_t info;
 
 	xconn = connect_x();
+	info = query_pointer(xconn);
+	printf("x = %d, y = %d\n", info.x, info.y);
 	if (!grab_pointer(xconn))
 		error("isn't possible to grab pointer", xconn);
 	hide_cursor(xconn);
