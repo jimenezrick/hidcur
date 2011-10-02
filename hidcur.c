@@ -18,12 +18,8 @@ typedef struct {
 	int               screen_num;
 } x_connection_t;
 
-//
-// XXX: hay que usar las *_checked()? hay que comprobar siempre el error despues de la llamada?
-//
-
 // XXX XXX XXX
-// static ...
+// Cabeceras static:
 static void x_disconnect(x_connection_t xconn);
 static void set_screen(x_connection_t *xconn);
 // XXX XXX XXX
@@ -80,10 +76,26 @@ bool grab_pointer(x_connection_t xconn)
 				  XCB_CURSOR_NONE, XCB_TIME_CURRENT_TIME);
 	reply = xcb_grab_pointer_reply(xconn.conn, cookie, &err);
 	if (err) error("can't grab pointer", xconn);
-	if (reply->status != XCB_GRAB_STATUS_SUCCESS)
-		return false;
 
-	return true;
+	if (reply->status == XCB_GRAB_STATUS_SUCCESS) {
+		free(reply);
+
+		return true;
+	} else {
+		free(reply);
+
+		return false;
+	}
+}
+
+void ungrab_pointer(x_connection_t xconn)
+{
+	xcb_void_cookie_t    cookie;
+	xcb_generic_error_t *err;
+
+	cookie = xcb_ungrab_pointer_checked(xconn.conn, XCB_CURRENT_TIME);
+	err = xcb_request_check(xconn.conn, cookie);
+	if (err) error("can't ungrab pointer", xconn);
 }
 
 void restore_cursor(x_connection_t xconn)
@@ -172,9 +184,6 @@ int main(int argc, char *argv[])
 	err = xcb_request_check(conn, cookie);
 	if (err) error("xcb_create_cursor_checked()", conn);
 
-	xcb_grab_pointer_cookie_t c = xcb_grab_pointer_unchecked(conn, 0, screen->root, XCB_EVENT_MASK_NO_EVENT, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, screen->root, cursor, XCB_TIME_CURRENT_TIME);
-	xcb_grab_pointer_reply_t *r = xcb_grab_pointer_reply(conn, c, NULL);
-	printf("reply grab_pointer: %u %u\n", r->status, r->response_type);
 
 	gc = xcb_generate_id(conn);
 	cookie = xcb_create_gc_checked(conn, gc, screen->root, 0, NULL);
@@ -189,13 +198,5 @@ int main(int argc, char *argv[])
 	// FIXME: arreglar los xcb_free_*(), asegurarse de liberar todo
 	xcb_free_gc(conn, gc);
 	xcb_free_cursor(conn, cursor);
-
-	sleep(5);
-
-	restore_cursor(conn);
-
-	xcb_disconnect(conn);
-
-	printf("Connects terminated\n");
 	*/
 }
