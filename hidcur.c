@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
+#include <unistd.h> // TODO: quitar
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -25,7 +25,7 @@ static void set_screen(x_connection_t *xconn);
 // XXX XXX XXX
 
 
-void error(const char *msg, x_connection_t xconn)
+static void error(const char *msg, x_connection_t xconn)
 {
 	fprintf(stderr, "Error: %s\n", msg);
 	if (xconn.conn) disconnect_x(xconn);
@@ -33,7 +33,7 @@ void error(const char *msg, x_connection_t xconn)
 	exit(EXIT_FAILURE);
 }
 
-x_connection_t connect_x(void)
+static x_connection_t connect_x(void)
 {
 	x_connection_t xconn;
 
@@ -44,12 +44,12 @@ x_connection_t connect_x(void)
 	return xconn;
 }
 
-void disconnect_x(x_connection_t xconn)
+static void disconnect_x(x_connection_t xconn)
 {
 	xcb_disconnect(xconn.conn);
 }
 
-void set_screen(x_connection_t *xconn)
+static void set_screen(x_connection_t *xconn)
 {
 	xcb_screen_iterator_t it;
 
@@ -64,7 +64,7 @@ void set_screen(x_connection_t *xconn)
 	if (!xconn->screen) error("can't find screen", *xconn);
 }
 
-bool grab_pointer(x_connection_t xconn)
+static bool grab_pointer(x_connection_t xconn)
 {
 	xcb_grab_pointer_cookie_t cookie;
 	xcb_grab_pointer_reply_t *reply;
@@ -76,19 +76,17 @@ bool grab_pointer(x_connection_t xconn)
 				  XCB_CURSOR_NONE, XCB_TIME_CURRENT_TIME);
 	reply = xcb_grab_pointer_reply(xconn.conn, cookie, &err);
 	if (err) error("can't grab pointer", xconn);
-
-	if (reply->status == XCB_GRAB_STATUS_SUCCESS) {
-		free(reply);
-
-		return true;
-	} else {
+	if (reply->status != XCB_GRAB_STATUS_SUCCESS) {
 		free(reply);
 
 		return false;
 	}
+	free(reply);
+
+	return true;
 }
 
-void ungrab_pointer(x_connection_t xconn)
+static void ungrab_pointer(x_connection_t xconn)
 {
 	xcb_void_cookie_t    cookie;
 	xcb_generic_error_t *err;
@@ -98,7 +96,7 @@ void ungrab_pointer(x_connection_t xconn)
 	if (err) error("can't ungrab pointer", xconn);
 }
 
-void restore_cursor(x_connection_t xconn)
+static void restore_cursor(x_connection_t xconn)
 {
 	xcb_font_t           font;
 	xcb_cursor_t         cursor;
@@ -148,46 +146,55 @@ void restore_cursor(x_connection_t xconn)
 	if (err) error("can't close font", xconn);
 }
 
-void hide_cursor(x_connection_t xconn)
+static void hide_cursor(x_connection_t xconn)
 {
-	/*
-	xcb_font_t            font;
-	xcb_cursor_t          cursor;
-	xcb_gcontext_t        gc;
-	xcb_pixmap_t          pixmap;
-	xcb_void_cookie_t     cookie;
-	xcb_generic_error_t  *err;
-	int                   cursor_glyph = 68;
-	uint32_t              vmask;
-	uint32_t              vlist[3];
-	*/
+	xcb_pixmap_t         pixmap;
+	xcb_cursor_t         cursor;
+	xcb_gcontext_t       gc;
+	xcb_void_cookie_t    cookie;
+	xcb_generic_error_t *err;
 
-	/*
-	pixmap = xcb_generate_id(conn);
-	cookie = xcb_create_pixmap_checked(conn, 1, pixmap, screen->root, 1, 1);
-	err = xcb_request_check(conn, cookie);
-	if (err) error("xcb_create_pixmap_checked()", conn);
+	pixmap = xcb_generate_id(xconn.conn);
+	cookie = xcb_create_pixmap_checked(xconn.conn, 1, pixmap, xconn.screen->root, 1, 1);
+	err = xcb_request_check(xconn.conn, cookie);
+	if (err) error("can't create pixmap", xconn);
 
-	cursor = xcb_generate_id(conn);
-	cookie = xcb_create_cursor_checked(conn, cursor, pixmap, pixmap, 0, 0, 0, 0, 0, 0, 0, 0);
-	err = xcb_request_check(conn, cookie);
-	if (err) error("xcb_create_cursor_checked()", conn);
+	cursor = xcb_generate_id(xconn.conn);
+	cookie = xcb_create_cursor_checked(xconn.conn, cursor, pixmap, pixmap, 0, 0, 0, 0, 0, 0, 0, 0);
+	err = xcb_request_check(xconn.conn, cookie);
+	if (err) error("xcb_create_cursor_checked()", xconn);
 
 
-	gc = xcb_generate_id(conn);
-	cookie = xcb_create_gc_checked(conn, gc, screen->root, 0, NULL);
-	err = xcb_request_check(conn, cookie);
-	if (err) error("xcb_create_gc_checked()", conn);
 
-	vmask = XCB_CW_CURSOR;
-	cookie = xcb_change_window_attributes_checked(conn, screen->root, vmask, &cursor);
-	err = xcb_request_check(conn, cookie);
-	if (err) error("xcb_change_window_attributes_checked()", conn);
 
-	// FIXME: arreglar los xcb_free_*(), asegurarse de liberar todo
-	xcb_free_gc(conn, gc);
-	xcb_free_cursor(conn, cursor);
-	*/
+	// XXX: borrar GC? arriba tambien
+	gc = xcb_generate_id(xconn.conn);
+	cookie = xcb_create_gc_checked(xconn.conn, gc, xconn.screen->root, 0, NULL);
+	err = xcb_request_check(xconn.conn, cookie);
+	if (err) error("xcb_create_gc_checked()", xconn);
+
+	cookie = xcb_change_window_attributes_checked(xconn.conn, xconn.screen->root, XCB_CW_CURSOR, &cursor);
+	err = xcb_request_check(xconn.conn, cookie);
+	if (err) error("xcb_change_window_attributes_checked()", xconn);
+	// XXX XXX XXX XXX XXX XXX XXX XXX
+
+
+
+
+
+
+
+	cookie = xcb_free_gc_checked(xconn.conn, gc);
+	err = xcb_request_check(xconn.conn, cookie);
+	if (err) error("can't free graphics context", xconn);
+
+	xcb_free_cursor_checked(xconn.conn, cursor);
+	err = xcb_request_check(xconn.conn, cookie);
+	if (err) error("can't free cursor", xconn);
+
+	xcb_free_pixmap_checked(xconn.conn, pixmap);
+	err = xcb_request_check(xconn.conn, cookie);
+	if (err) error("can't free pixmap", xconn);
 }
 
 int main(int argc, char *argv[])
@@ -195,9 +202,10 @@ int main(int argc, char *argv[])
 	x_connection_t xconn;
 
 	xconn = connect_x();
-	//grab_pointer(xconn);
-	//ungrab_pointer(xconn);
-	//hide_cursor(xconn);
+	grab_pointer(xconn);
+	hide_cursor(xconn);
+	sleep(4);
+	ungrab_pointer(xconn);
 	restore_cursor(xconn);
 	disconnect_x(xconn);
 
