@@ -138,9 +138,12 @@ static void restore_cursor(x_connection_t xconn)
 static void hide_cursor(x_connection_t xconn)
 {
 	xcb_pixmap_t         pixmap;
+	xcb_gcontext_t       gc;
+	xcb_rectangle_t      rect = {.x = 0, .y = 0, .width = 1, .height = 1};
 	xcb_cursor_t         cursor;
 	xcb_void_cookie_t    cookie;
 	xcb_generic_error_t *err;
+	uint32_t             fun = XCB_GX_CLEAR;
 
 	pixmap = xcb_generate_id(xconn.conn);
 	cookie = xcb_create_pixmap_checked(xconn.conn, 1, pixmap,
@@ -148,25 +151,15 @@ static void hide_cursor(x_connection_t xconn)
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't create pixmap", xconn);
 
-
-
-
-	/* XXX: el pixmap se inicializa a 0's por defecto? NO!, probar a ponerlo a 1's
-	xcb_rectangle_t r = {.x = 0, .y = 0, .width = 2, .height = 2};
-	xcb_gcontext_t  gc;
-	uint32_t        vmask, vlist[2];
-
-	vmask = XCB_GC_FOREGROUND;
-	vlist[0] = xconn.screen->white_pixel;
-
 	gc = xcb_generate_id(xconn.conn);
-	xcb_create_gc(xconn.conn, gc, xconn.screen->root, vmask, vlist);
-	xcb_poly_rectangle(xconn.conn, pixmap, gc, 1, &r);
-	*/
+	cookie = xcb_create_gc_checked(xconn.conn, gc, xconn.screen->root,
+				       XCB_GC_FUNCTION, &fun);
+	err = xcb_request_check(xconn.conn, cookie);
+	if (err) error("can't create graphics context", xconn);
 
-
-
-
+	cookie = xcb_poly_fill_rectangle_checked(xconn.conn, pixmap, gc, 1, &rect);
+	err = xcb_request_check(xconn.conn, cookie);
+	if (err) error("can't fill rectangle", xconn);
 
 	cursor = xcb_generate_id(xconn.conn);
 	cookie = xcb_create_cursor_checked(xconn.conn, cursor, pixmap, pixmap,
@@ -179,11 +172,15 @@ static void hide_cursor(x_connection_t xconn)
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't change window attributes", xconn);
 
-	xcb_free_cursor_checked(xconn.conn, cursor);
+	cookie = xcb_free_cursor_checked(xconn.conn, cursor);
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't free cursor", xconn);
 
-	xcb_free_pixmap_checked(xconn.conn, pixmap);
+	cookie = xcb_free_gc_checked(xconn.conn, gc);
+	err = xcb_request_check(xconn.conn, cookie);
+	if (err) error("can't free graphics context", xconn);
+
+	cookie = xcb_free_pixmap_checked(xconn.conn, pixmap);
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't free pixmap", xconn);
 }
