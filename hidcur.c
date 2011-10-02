@@ -30,13 +30,13 @@ static void error(const char *msg, x_connection_t xconn);
 static x_connection_t connect_x(void);
 static void disconnect_x(x_connection_t xconn);
 static void set_screen(x_connection_t *xconn);
-static bool grab_pointer(x_connection_t xconn);
+static bool grab_pointer(x_connection_t xconn, xcb_window_t win);
 static void ungrab_pointer(x_connection_t xconn);
 static void restore_cursor(x_connection_t xconn);
 static void hide_cursor(x_connection_t xconn);
 static xcb_window_t get_input_focus(x_connection_t xconn);
 static pointer_info_t query_pointer(x_connection_t xconn);
-static xcb_window_t create_window(x_connection_t xconn);
+static xcb_window_t create_window(x_connection_t xconn, xcb_window_t parent_win);
 
 static void error(const char *msg, x_connection_t xconn)
 {
@@ -77,16 +77,15 @@ static void set_screen(x_connection_t *xconn)
 	if (!xconn->screen) error("can't find screen", *xconn);
 }
 
-static bool grab_pointer(x_connection_t xconn)
+static bool grab_pointer(x_connection_t xconn, xcb_window_t win)
 {
 	xcb_grab_pointer_cookie_t cookie;
 	xcb_grab_pointer_reply_t *reply;
 	xcb_generic_error_t      *err;
 
-	// TODO: probar owner_events = true, confine_to = root_win, mirar que significa
-	cookie = xcb_grab_pointer(xconn.conn, false, xconn.screen->root, MOUSE_MASK,
-				  XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_WINDOW_NONE,
-				  XCB_CURSOR_NONE, XCB_TIME_CURRENT_TIME);
+	cookie = xcb_grab_pointer(xconn.conn, false, win, MOUSE_MASK, XCB_GRAB_MODE_ASYNC,
+				  XCB_GRAB_MODE_ASYNC, XCB_WINDOW_NONE, XCB_CURSOR_NONE,
+				  XCB_TIME_CURRENT_TIME);
 	reply = xcb_grab_pointer_reply(xconn.conn, cookie, &err);
 	if (err) error("can't grab pointer", xconn);
 
@@ -231,21 +230,23 @@ static pointer_info_t query_pointer(x_connection_t xconn)
 	return info;
 }
 
-static xcb_window_t create_window(x_connection_t xconn)
+static xcb_window_t create_window(x_connection_t xconn, xcb_window_t parent_win)
 {
-	xcb_void_cookie_t cookie;
-	xcb_window_t      win;
+	xcb_void_cookie_t    cookie;
+	xcb_window_t         win;
+	xcb_generic_error_t *err;
 
+	// XXX XXX XXX
+	int x = 0, y = 0, width = 10, height = 10, border = 2;
+	// XXX XXX XXX
 
-	/*
-	wid = xcb_generate_id(xconn.conn);
-	*/
-
-
-
-
-
-
+	win = xcb_generate_id(xconn.conn);
+	cookie = xcb_create_window_checked(xconn.conn, XCB_COPY_FROM_PARENT, win,
+					   parent_win, x, y, width, height, border,
+					   XCB_WINDOW_CLASS_INPUT_OUTPUT,
+					   xconn.screen->root_visual, 0, NULL);
+	err = xcb_request_check(xconn.conn, cookie);
+	if (err) error("can't create window", xconn);
 
 	return win;
 }
@@ -254,16 +255,21 @@ int main(int argc, char *argv[])
 {
 	x_connection_t xconn;
 	pointer_info_t info;
+	xcb_window_t   win;
 
 	xconn = connect_x();
 	info = query_pointer(xconn);
 	printf("x = %d, y = %d\n", info.x, info.y);
-	if (!grab_pointer(xconn))
+
+	win = create_window(xconn, xconn.screen->root);
+	if (!grab_pointer(xconn, win))
 		error("isn't possible to grab pointer", xconn);
+
 	hide_cursor(xconn);
 	sleep(4);
 	ungrab_pointer(xconn);
 	restore_cursor(xconn);
+
 	disconnect_x(xconn);
 
 	/*
