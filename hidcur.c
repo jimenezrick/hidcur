@@ -6,11 +6,13 @@
 #include <stdint.h>
 
 #include <xcb/xcb.h>
+#include <X11/cursorfont.h>
 
+// TODO: sin usar
 #define MOUSE_MASK  XCB_EVENT_MASK_POINTER_MOTION | \
 		    XCB_EVENT_MASK_BUTTON_PRESS   | \
 		    XCB_EVENT_MASK_BUTTON_RELEASE
-#define CURSOR_CHAR 68
+// TODO TODO TODO
 
 typedef struct {
 	xcb_connection_t *conn;
@@ -112,7 +114,7 @@ static void restore_cursor(x_connection_t xconn)
 
 	cursor = xcb_generate_id(xconn.conn);
 	cookie = xcb_create_glyph_cursor_checked(xconn.conn, cursor, font, font,
-						 CURSOR_CHAR, CURSOR_CHAR + 1, 0, 0, 0,
+						 XC_left_ptr, XC_left_ptr + 1, 0, 0, 0,
 						 UINT16_MAX, UINT16_MAX, UINT16_MAX);
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't create glyph cursor", xconn);
@@ -143,6 +145,26 @@ static void hide_cursor(x_connection_t xconn)
 					   xconn.screen->root, 1, 1);
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't create pixmap", xconn);
+
+
+
+
+	/*
+	xcb_rectangle_t r = {.x = 0, .y = 0, .width = 2, .height = 2};
+	xcb_gcontext_t  gc;
+	uint32_t        vmask, vlist[2];
+
+	vmask = XCB_GC_FOREGROUND;
+	vlist[0] = xconn.screen->white_pixel;
+
+	gc = xcb_generate_id(xconn.conn);
+	xcb_create_gc(xconn.conn, gc, xconn.screen->root, vmask, vlist);
+	xcb_poly_rectangle(xconn.conn, pixmap, gc, 1, &r);
+	*/
+
+
+
+
 
 	cursor = xcb_generate_id(xconn.conn);
 	cookie = xcb_create_cursor_checked(xconn.conn, cursor, pixmap, pixmap,
