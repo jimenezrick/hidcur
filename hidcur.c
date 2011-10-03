@@ -36,7 +36,7 @@ static void restore_cursor(x_connection_t xconn);
 static void hide_cursor(x_connection_t xconn);
 static xcb_window_t get_input_focus(x_connection_t xconn);
 static pointer_info_t query_pointer(x_connection_t xconn);
-static xcb_window_t create_window(x_connection_t xconn, xcb_window_t parent_win);
+static xcb_window_t create_input_window(x_connection_t xconn, xcb_window_t parent_win);
 
 static void error(const char *msg, x_connection_t xconn)
 {
@@ -231,18 +231,15 @@ static pointer_info_t query_pointer(x_connection_t xconn)
 	return info;
 }
 
-// TODO: create_corner_window(), y dejar como auxiliar a create_window()
-static xcb_window_t create_window(x_connection_t xconn, xcb_window_t parent_win)
+static xcb_window_t create_input_window(x_connection_t xconn, xcb_window_t parent_win)
 {
 	xcb_void_cookie_t    cookie;
 	xcb_window_t         win;
 	xcb_generic_error_t *err;
 
-	// TODO: crear la ventana en la esquina derecha abajo
 	win = xcb_generate_id(xconn.conn);
-	cookie = xcb_create_window_checked(xconn.conn, XCB_COPY_FROM_PARENT, win,
-					   parent_win, 0, 0, 1, 1, 1,
-					   XCB_WINDOW_CLASS_INPUT_OUTPUT,
+	cookie = xcb_create_window_checked(xconn.conn, 0, win, parent_win,
+					   0, 0, 1, 1, 0, XCB_WINDOW_CLASS_INPUT_ONLY,
 					   xconn.screen->root_visual, 0, NULL);
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't create window", xconn);
@@ -260,7 +257,7 @@ int main(int argc, char *argv[])
 	info = query_pointer(xconn);
 	printf("x = %d, y = %d\n", info.x, info.y);
 
-	win = create_window(xconn, get_input_focus(xconn));
+	win = create_input_window(xconn, get_input_focus(xconn));
 	xcb_map_window(xconn.conn, win);
 	xcb_flush(xconn.conn);
 
