@@ -50,14 +50,14 @@ static void show_cursor(x_connection_t xconn, xcb_window_t win);
 static void error(const char *msg, x_connection_t xconn)
 {
 	fprintf(stderr, "Error: %s\n", msg);
-	if (xconn.conn) disconnect_x(xconn);
+	disconnect_x(xconn);
 
 	exit(EXIT_FAILURE);
 }
 
 static x_connection_t connect_x(void)
 {
-	x_connection_t xconn = {.conn = NULL};
+	x_connection_t xconn;
 
 	xconn.conn = xcb_connect(NULL, &xconn.screen_num);
 	if (xcb_connection_has_error(xconn.conn))
