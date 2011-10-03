@@ -1,4 +1,0 @@
-LOCAL_LIBRARIES = $(XLIB)
-
-SimpleProgramTarget(unclutter)
-
