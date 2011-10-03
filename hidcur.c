@@ -237,7 +237,7 @@ static xcb_window_t create_window(x_connection_t xconn, xcb_window_t parent_win)
 	xcb_generic_error_t *err;
 
 	// XXX XXX XXX
-	int x = 0, y = 0, width = 10, height = 10, border = 2;
+	int x = 0, y = 0, width = 100, height = 100, border = 1;
 	// XXX XXX XXX
 
 	win = xcb_generate_id(xconn.conn);
@@ -261,15 +261,15 @@ int main(int argc, char *argv[])
 	info = query_pointer(xconn);
 	printf("x = %d, y = %d\n", info.x, info.y);
 
-	win = create_window(xconn, xconn.screen->root);
+	win = create_window(xconn, get_input_focus(xconn));
 	xcb_map_window(xconn.conn, win);
 	xcb_flush(xconn.conn);
 
 	if (!grab_pointer(xconn, win))
 		error("isn't possible to grab pointer", xconn);
 	hide_cursor(xconn);
-
 	xcb_flush(xconn.conn);
+
 	sleep(4);
 
 	ungrab_pointer(xconn);
