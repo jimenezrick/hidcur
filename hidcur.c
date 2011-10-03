@@ -35,7 +35,6 @@ static void disconnect_x(x_connection_t xconn);
 static void set_screen(x_connection_t *xconn);
 static bool grab_pointer(x_connection_t xconn, xcb_window_t grab_win);
 static void ungrab_pointer(x_connection_t xconn);
-static void restore_cursor(x_connection_t xconn);
 static void hide_cursor(x_connection_t xconn, xcb_window_t win);
 static xcb_window_t get_input_focus(x_connection_t xconn);
 static pointer_info_t query_pointer(x_connection_t xconn);
@@ -112,40 +111,6 @@ static void ungrab_pointer(x_connection_t xconn)
 	cookie = xcb_ungrab_pointer_checked(xconn.conn, XCB_CURRENT_TIME);
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't ungrab pointer", xconn);
-}
-
-// TODO: ponerle como argumento xcb_window_t win
-static void restore_cursor(x_connection_t xconn)
-{
-	xcb_font_t           font;
-	xcb_cursor_t         cursor;
-	xcb_void_cookie_t    cookie;
-	xcb_generic_error_t *err;
-
-	font = xcb_generate_id(xconn.conn);
-	cookie = xcb_open_font_checked(xconn.conn, font, strlen("cursor"), "cursor");
-	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("can't load cursor font", xconn);
-
-	cursor = xcb_generate_id(xconn.conn);
-	cookie = xcb_create_glyph_cursor_checked(xconn.conn, cursor, font, font,
-						 XC_left_ptr, XC_left_ptr + 1, 0, 0, 0,
-						 UINT16_MAX, UINT16_MAX, UINT16_MAX);
-	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("can't create glyph cursor", xconn);
-
-	cookie = xcb_change_window_attributes_checked(xconn.conn, xconn.screen->root,
-						      XCB_CW_CURSOR, &cursor);
-	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("can't change window attributes", xconn);
-
-	cookie = xcb_free_cursor_checked(xconn.conn, cursor);
-	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("can't free cursor", xconn);
-
-	cookie = xcb_close_font_checked(xconn.conn, font);
-	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("can't close font", xconn);
 }
 
 static void hide_cursor(x_connection_t xconn, xcb_window_t win)
@@ -275,7 +240,6 @@ int main(int argc, char *argv[])
 	//wait_pointer_movement(xconn);
 
 	ungrab_pointer(xconn);
-	//restore_cursor(xconn);
 
 	disconnect_x(xconn);
 
