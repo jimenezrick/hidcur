@@ -1,12 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h> // TODO: quitar
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
 
 #include <xcb/xcb.h>
 #include <X11/cursorfont.h>
+
+// XXX XXX XXX
+#include <unistd.h>
+// XXX XXX XXX
 
 // TODO: sin usar
 #define MOUSE_MASK  XCB_EVENT_MASK_POINTER_MOTION | \
@@ -33,7 +36,7 @@ static void set_screen(x_connection_t *xconn);
 static bool grab_pointer(x_connection_t xconn, xcb_window_t grab_win);
 static void ungrab_pointer(x_connection_t xconn);
 static void restore_cursor(x_connection_t xconn);
-static void hide_cursor(x_connection_t xconn);
+static void hide_cursor(x_connection_t xconn, xcb_window_t win);
 static xcb_window_t get_input_focus(x_connection_t xconn);
 static pointer_info_t query_pointer(x_connection_t xconn);
 static xcb_window_t create_input_window(x_connection_t xconn, xcb_window_t parent_win);
@@ -65,11 +68,12 @@ static void disconnect_x(x_connection_t xconn)
 static void set_screen(x_connection_t *xconn)
 {
 	xcb_screen_iterator_t it;
+	int screen_num = xconn->screen_num;
 
 	xconn->screen = NULL;
 	it = xcb_setup_roots_iterator(xcb_get_setup(xconn->conn));
-	for (; it.rem; xcb_screen_next(&it), xconn->screen_num--) {
-		if (!xconn->screen_num) {
+	for (; it.rem; xcb_screen_next(&it), screen_num--) {
+		if (!screen_num) {
 			xconn->screen = it.data;
 			break;
 		}
@@ -110,6 +114,7 @@ static void ungrab_pointer(x_connection_t xconn)
 	if (err) error("can't ungrab pointer", xconn);
 }
 
+// TODO: ponerle como argumento xcb_window_t win
 static void restore_cursor(x_connection_t xconn)
 {
 	xcb_font_t           font;
@@ -143,7 +148,7 @@ static void restore_cursor(x_connection_t xconn)
 	if (err) error("can't close font", xconn);
 }
 
-static void hide_cursor(x_connection_t xconn)
+static void hide_cursor(x_connection_t xconn, xcb_window_t win)
 {
 	xcb_pixmap_t         pixmap;
 	xcb_gcontext_t       gc;
@@ -154,8 +159,7 @@ static void hide_cursor(x_connection_t xconn)
 	uint32_t             fun = XCB_GX_CLEAR;
 
 	pixmap = xcb_generate_id(xconn.conn);
-	cookie = xcb_create_pixmap_checked(xconn.conn, 1, pixmap,
-					   xconn.screen->root, 1, 1);
+	cookie = xcb_create_pixmap_checked(xconn.conn, 1, pixmap, win, 1, 1);
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't create pixmap", xconn);
 
@@ -175,7 +179,7 @@ static void hide_cursor(x_connection_t xconn)
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't create cursor", xconn);
 
-	cookie = xcb_change_window_attributes_checked(xconn.conn, xconn.screen->root,
+	cookie = xcb_change_window_attributes_checked(xconn.conn, win,
 						      XCB_CW_CURSOR, &cursor);
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't change window attributes", xconn);
@@ -244,32 +248,34 @@ static xcb_window_t create_input_window(x_connection_t xconn, xcb_window_t paren
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't create window", xconn);
 
+	cookie = xcb_map_window_checked(xconn.conn, win);
+	err = xcb_request_check(xconn.conn, cookie);
+	if (err) error("can't map window", xconn);
+
 	return win;
 }
 
 int main(int argc, char *argv[])
 {
 	x_connection_t xconn;
-	pointer_info_t info;
 	xcb_window_t   win;
 
 	xconn = connect_x();
-	info = query_pointer(xconn);
-	printf("x = %d, y = %d\n", info.x, info.y);
-
 	win = create_input_window(xconn, get_input_focus(xconn));
-	xcb_map_window(xconn.conn, win);
-	xcb_flush(xconn.conn);
-
-	if (!grab_pointer(xconn, win))
+	if (!grab_pointer(xconn, win)) {
 		error("isn't possible to grab pointer", xconn);
-	hide_cursor(xconn);
-	xcb_flush(xconn.conn);
 
+		return EXIT_FAILURE;
+	}
+
+	// TODO: confine pointer to window?
+	hide_cursor(xconn, win);
+	xcb_flush(xconn.conn);
 	sleep(4);
+	//wait_pointer_movement(xconn);
 
 	ungrab_pointer(xconn);
-	restore_cursor(xconn);
+	//restore_cursor(xconn);
 
 	disconnect_x(xconn);
 
