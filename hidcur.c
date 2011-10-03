@@ -219,12 +219,11 @@ static xcb_window_t create_input_window(x_connection_t xconn, xcb_window_t paren
 	xcb_void_cookie_t    cookie;
 	xcb_window_t         win;
 	xcb_generic_error_t *err;
-	uint32_t             mask = MOUSE_MASK;
 
 	win = xcb_generate_id(xconn.conn);
 	cookie = xcb_create_window_checked(xconn.conn, 0, win, parent_win,
 					   0, 0, 1, 1, 0, XCB_WINDOW_CLASS_INPUT_ONLY,
-					   XCB_COPY_FROM_PARENT, XCB_CW_EVENT_MASK, &mask);
+					   XCB_COPY_FROM_PARENT, 0, NULL);
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't create window", xconn);
 
@@ -263,8 +262,6 @@ static void wait_pointer_movement(x_connection_t xconn)
 {
 	xcb_generic_event_t *event;
 
-	// TODO: Probar a quitar MOUSE_MASK de grab() o de create_win()
-	// TODO: probar a hacer un disconnect_x() con un DISPLAY erroneo tras el connect_x()
 	event = xcb_wait_for_event(xconn.conn);
 	if (!event) error("I/O error happened", xconn);
 
