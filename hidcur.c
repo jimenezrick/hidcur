@@ -231,7 +231,7 @@ static pointer_info_t query_pointer(x_connection_t xconn)
 	return info;
 }
 
-// TODO: create_corner_window
+// TODO: create_corner_window(), y dejar como auxiliar a create_window()
 static xcb_window_t create_window(x_connection_t xconn, xcb_window_t parent_win)
 {
 	xcb_void_cookie_t    cookie;
@@ -240,8 +240,9 @@ static xcb_window_t create_window(x_connection_t xconn, xcb_window_t parent_win)
 
 	// TODO: crear la ventana en la esquina derecha abajo
 	win = xcb_generate_id(xconn.conn);
-	cookie = xcb_create_window_checked(xconn.conn, 0, win, parent_win,
-					   0, 0, 1, 1, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT,
+	cookie = xcb_create_window_checked(xconn.conn, XCB_COPY_FROM_PARENT, win,
+					   parent_win, 0, 0, 1, 1, 1,
+					   XCB_WINDOW_CLASS_INPUT_OUTPUT,
 					   xconn.screen->root_visual, 0, NULL);
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't create window", xconn);
