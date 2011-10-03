@@ -30,7 +30,7 @@ static void error(const char *msg, x_connection_t xconn);
 static x_connection_t connect_x(void);
 static void disconnect_x(x_connection_t xconn);
 static void set_screen(x_connection_t *xconn);
-static bool grab_pointer(x_connection_t xconn, xcb_window_t win);
+static bool grab_pointer(x_connection_t xconn, xcb_window_t grab_win);
 static void ungrab_pointer(x_connection_t xconn);
 static void restore_cursor(x_connection_t xconn);
 static void hide_cursor(x_connection_t xconn);
@@ -77,14 +77,15 @@ static void set_screen(x_connection_t *xconn)
 	if (!xconn->screen) error("can't find screen", *xconn);
 }
 
-static bool grab_pointer(x_connection_t xconn, xcb_window_t win)
+static bool grab_pointer(x_connection_t xconn, xcb_window_t grab_win)
 {
 	xcb_grab_pointer_cookie_t cookie;
 	xcb_grab_pointer_reply_t *reply;
 	xcb_generic_error_t      *err;
 
-	cookie = xcb_grab_pointer(xconn.conn, false, win, MOUSE_MASK, XCB_GRAB_MODE_ASYNC,
-				  XCB_GRAB_MODE_ASYNC, XCB_WINDOW_NONE, XCB_CURSOR_NONE,
+	cookie = xcb_grab_pointer(xconn.conn, false, grab_win, MOUSE_MASK,
+				  XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
+				  XCB_WINDOW_NONE, XCB_CURSOR_NONE,
 				  XCB_TIME_CURRENT_TIME);
 	reply = xcb_grab_pointer_reply(xconn.conn, cookie, &err);
 	if (err) error("can't grab pointer", xconn);
@@ -236,14 +237,10 @@ static xcb_window_t create_window(x_connection_t xconn, xcb_window_t parent_win)
 	xcb_window_t         win;
 	xcb_generic_error_t *err;
 
-	// XXX XXX XXX
-	int x = 0, y = 0, width = 100, height = 100, border = 1;
-	// XXX XXX XXX
-
+	// TODO: crear la ventana en la esquina derecha abajo
 	win = xcb_generate_id(xconn.conn);
-	cookie = xcb_create_window_checked(xconn.conn, XCB_COPY_FROM_PARENT, win,
-					   parent_win, x, y, width, height, border,
-					   XCB_WINDOW_CLASS_INPUT_OUTPUT,
+	cookie = xcb_create_window_checked(xconn.conn, 0, win, parent_win,
+					   0, 0, 1, 1, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT,
 					   xconn.screen->root_visual, 0, NULL);
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't create window", xconn);
