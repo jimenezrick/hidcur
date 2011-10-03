@@ -16,11 +16,7 @@
 
 #include <xcb/xcb.h>
 
-// TODO: sin usar
-#define MOUSE_MASK XCB_EVENT_MASK_POINTER_MOTION | \
-		   XCB_EVENT_MASK_BUTTON_PRESS   | \
-		   XCB_EVENT_MASK_BUTTON_RELEASE
-// TODO TODO TODO
+#define MOUSE_MASK XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS
 
 typedef struct {
 	xcb_connection_t *conn;
@@ -45,6 +41,11 @@ static void free_cursor(x_connection_t xconn, xcb_cursor_t cursor);
 static xcb_window_t get_input_focus(x_connection_t xconn);
 static pointer_info_t query_pointer(x_connection_t xconn);
 static xcb_window_t create_input_window(x_connection_t xconn, xcb_window_t parent_win);
+static void destroy_window(x_connection_t xconn, xcb_window_t win);
+static void wait_pointer_idle(x_connection_t xconn, int interval);
+static void wait_pointer_movement(x_connection_t xconn);
+static bool hide_cursor(x_connection_t xconn, xcb_window_t *win);
+static void show_cursor(x_connection_t xconn, xcb_window_t win);
 
 static void error(const char *msg, x_connection_t xconn)
 {
@@ -218,11 +219,12 @@ static xcb_window_t create_input_window(x_connection_t xconn, xcb_window_t paren
 	xcb_void_cookie_t    cookie;
 	xcb_window_t         win;
 	xcb_generic_error_t *err;
+	uint32_t             mask = MOUSE_MASK;
 
 	win = xcb_generate_id(xconn.conn);
 	cookie = xcb_create_window_checked(xconn.conn, 0, win, parent_win,
 					   0, 0, 1, 1, 0, XCB_WINDOW_CLASS_INPUT_ONLY,
-					   XCB_COPY_FROM_PARENT, 0, NULL);
+					   XCB_COPY_FROM_PARENT, XCB_CW_EVENT_MASK, &mask);
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't create window", xconn);
 
@@ -233,25 +235,79 @@ static xcb_window_t create_input_window(x_connection_t xconn, xcb_window_t paren
 	return win;
 }
 
+static void destroy_window(x_connection_t xconn, xcb_window_t win)
+{
+	xcb_void_cookie_t    cookie;
+	xcb_generic_error_t *err;
+
+	cookie = xcb_destroy_window_checked(xconn.conn, win);
+	err = xcb_request_check(xconn.conn, cookie);
+	if (err) error("can't destroy window", xconn);
+}
+
+static void wait_pointer_idle(x_connection_t xconn, int interval)
+{
+	pointer_info_t old_info, info;
+
+	old_info = query_pointer(xconn);
+	for (;;) {
+		sleep(interval);
+		info = query_pointer(xconn);
+		if (info.x == old_info.x && info.y == old_info.y)
+			break;
+		old_info = info;
+	}
+}
+
+static void wait_pointer_movement(x_connection_t xconn)
+{
+	xcb_generic_event_t *event;
+
+	// TODO: Probar a quitar MOUSE_MASK de grab() o de create_win()
+	while ((event = xcb_wait_for_event(xconn.conn)) != NULL) {
+		switch (event->response_type) {
+			case XCB_MOTION_NOTIFY:
+				goto exit;
+			case XCB_BUTTON_PRESS:
+				goto exit;
+			default:
+				error("unknown event", xconn);
+		}
+	}
+	if (!event) error("I/O error happened", xconn);
+	// TODO: probar a hacer un disconnect_x() con un DISPLAY erroneo tras el connect_x()
+
+exit:	free(event);
+}
+
+static bool hide_cursor(x_connection_t xconn, xcb_window_t *win)
+{
+	*win = create_input_window(xconn, get_input_focus(xconn));
+	if (!grab_pointer(xconn, *win, create_invisible_cursor(xconn)))
+		return false;
+
+	return true;
+}
+
+static void show_cursor(x_connection_t xconn, xcb_window_t win)
+{
+	ungrab_pointer(xconn);
+	destroy_window(xconn, win);
+}
+
 int main(int argc, char *argv[])
 {
 	x_connection_t xconn;
 	xcb_window_t   win;
 
 	xconn = connect_x();
-	win = create_input_window(xconn, get_input_focus(xconn));
-	// TODO: confine pointer to window?
-	if (!grab_pointer(xconn, win, create_invisible_cursor(xconn))) {
-		error("isn't possible to grab pointer", xconn);
-
-		return EXIT_FAILURE;
+	for (;;) {
+		wait_pointer_idle(xconn, 2);
+		if (!hide_cursor(xconn, &win))
+			continue;
+		wait_pointer_movement(xconn);
+		show_cursor(xconn, win);
 	}
-
-	xcb_flush(xconn.conn);
-	pause(); // TODO: quitar include si no usamos sleep()
-	//wait_pointer_movement(xconn);
-	ungrab_pointer(xconn);
-
 	disconnect_x(xconn);
 
 	return EXIT_SUCCESS;
