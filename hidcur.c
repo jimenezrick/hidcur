@@ -42,6 +42,9 @@ static bool grab_pointer(x_connection_t xconn, xcb_window_t grab_win, xcb_cursor
 static void ungrab_pointer(x_connection_t xconn);
 static xcb_cursor_t create_invisible_cursor(x_connection_t xconn);
 static void free_cursor(x_connection_t xconn, xcb_cursor_t cursor);
+static xcb_window_t get_input_focus(x_connection_t xconn);
+static pointer_info_t query_pointer(x_connection_t xconn);
+static xcb_window_t create_input_window(x_connection_t xconn, xcb_window_t parent_win);
 
 static void error(const char *msg, x_connection_t xconn)
 {
@@ -128,7 +131,8 @@ static xcb_cursor_t create_invisible_cursor(x_connection_t xconn)
 	uint32_t             fun = XCB_GX_CLEAR;
 
 	pixmap = xcb_generate_id(xconn.conn);
-	cookie = xcb_create_pixmap_checked(xconn.conn, 1, pixmap, win, 1, 1);
+	cookie = xcb_create_pixmap_checked(xconn.conn, 1, pixmap,
+					   xconn.screen->root, 1, 1);
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't create pixmap", xconn);
 
@@ -216,7 +220,7 @@ static xcb_window_t create_input_window(x_connection_t xconn, xcb_window_t paren
 	win = xcb_generate_id(xconn.conn);
 	cookie = xcb_create_window_checked(xconn.conn, 0, win, parent_win,
 					   0, 0, 1, 1, 0, XCB_WINDOW_CLASS_INPUT_ONLY,
-					   xconn.screen->root_visual, 0, NULL);
+					   XCB_COPY_FROM_PARENT, 0, NULL);
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't create window", xconn);
 
