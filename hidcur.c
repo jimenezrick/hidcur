@@ -1,15 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
 
 #include <xcb/xcb.h>
-#include <X11/cursorfont.h>
-
-// XXX XXX XXX
-#include <unistd.h>
-// XXX XXX XXX
 
 // TODO: sin usar
 #define MOUSE_MASK  XCB_EVENT_MASK_POINTER_MOTION | \
@@ -236,7 +232,7 @@ int main(int argc, char *argv[])
 	// TODO: confine pointer to window?
 	hide_cursor(xconn, win);
 	xcb_flush(xconn.conn);
-	sleep(4);
+	sleep(4); // TODO: quitar include si no usamos sleep()
 	//wait_pointer_movement(xconn);
 
 	ungrab_pointer(xconn);
