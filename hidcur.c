@@ -262,11 +262,16 @@ int main(int argc, char *argv[])
 	printf("x = %d, y = %d\n", info.x, info.y);
 
 	win = create_window(xconn, xconn.screen->root);
+	xcb_map_window(xconn.conn, win);
+	xcb_flush(xconn.conn);
+
 	if (!grab_pointer(xconn, win))
 		error("isn't possible to grab pointer", xconn);
-
 	hide_cursor(xconn);
+
+	xcb_flush(xconn.conn);
 	sleep(4);
+
 	ungrab_pointer(xconn);
 	restore_cursor(xconn);
 
