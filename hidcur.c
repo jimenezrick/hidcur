@@ -264,20 +264,16 @@ static void wait_pointer_movement(x_connection_t xconn)
 	xcb_generic_event_t *event;
 
 	// TODO: Probar a quitar MOUSE_MASK de grab() o de create_win()
-	while ((event = xcb_wait_for_event(xconn.conn)) != NULL) {
-		switch (event->response_type) {
-			case XCB_MOTION_NOTIFY:
-				goto exit;
-			case XCB_BUTTON_PRESS:
-				goto exit;
-			default:
-				error("unknown event", xconn);
-		}
-	}
-	if (!event) error("I/O error happened", xconn);
 	// TODO: probar a hacer un disconnect_x() con un DISPLAY erroneo tras el connect_x()
+	event = xcb_wait_for_event(xconn.conn);
+	if (!event) error("I/O error happened", xconn);
 
-exit:	free(event);
+	if (event->response_type != XCB_MOTION_NOTIFY &&
+	    event->response_type != XCB_BUTTON_PRESS) {
+		free(event);
+		error("unknown event", xconn);
+	}
+	free(event);
 }
 
 static bool hide_cursor(x_connection_t xconn, xcb_window_t *win)
