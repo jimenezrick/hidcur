@@ -8,9 +8,9 @@
 #include <xcb/xcb.h>
 
 // TODO: sin usar
-#define MOUSE_MASK  XCB_EVENT_MASK_POINTER_MOTION | \
-		    XCB_EVENT_MASK_BUTTON_PRESS   | \
-		    XCB_EVENT_MASK_BUTTON_RELEASE
+#define MOUSE_MASK XCB_EVENT_MASK_POINTER_MOTION | \
+		   XCB_EVENT_MASK_BUTTON_PRESS   | \
+		   XCB_EVENT_MASK_BUTTON_RELEASE
 // TODO TODO TODO
 
 typedef struct {
@@ -26,15 +26,6 @@ typedef struct {
 } pointer_info_t;
 
 static void error(const char *msg, x_connection_t xconn);
-static x_connection_t connect_x(void);
-static void disconnect_x(x_connection_t xconn);
-static void set_screen(x_connection_t *xconn);
-static bool grab_pointer(x_connection_t xconn, xcb_window_t grab_win);
-static void ungrab_pointer(x_connection_t xconn);
-static void hide_cursor(x_connection_t xconn, xcb_window_t win);
-static xcb_window_t get_input_focus(x_connection_t xconn);
-static pointer_info_t query_pointer(x_connection_t xconn);
-static xcb_window_t create_input_window(x_connection_t xconn, xcb_window_t parent_win);
 
 static void error(const char *msg, x_connection_t xconn)
 {
@@ -76,7 +67,7 @@ static void set_screen(x_connection_t *xconn)
 	if (!xconn->screen) error("can't find screen", *xconn);
 }
 
-static bool grab_pointer(x_connection_t xconn, xcb_window_t grab_win)
+static bool grab_pointer(x_connection_t xconn, xcb_window_t grab_win, xcb_cursor_t cursor)
 {
 	xcb_grab_pointer_cookie_t cookie;
 	xcb_grab_pointer_reply_t *reply;
@@ -84,11 +75,12 @@ static bool grab_pointer(x_connection_t xconn, xcb_window_t grab_win)
 
 	cookie = xcb_grab_pointer(xconn.conn, false, grab_win, MOUSE_MASK,
 				  XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
-				  XCB_WINDOW_NONE, XCB_CURSOR_NONE,
+				  XCB_WINDOW_NONE, cursor,
 				  XCB_TIME_CURRENT_TIME);
 	reply = xcb_grab_pointer_reply(xconn.conn, cookie, &err);
 	if (err) error("can't grab pointer", xconn);
 
+	free_cursor(xconn, cursor);
 	if (reply->status != XCB_GRAB_STATUS_SUCCESS) {
 		free(reply);
 
@@ -109,7 +101,7 @@ static void ungrab_pointer(x_connection_t xconn)
 	if (err) error("can't ungrab pointer", xconn);
 }
 
-static void hide_cursor(x_connection_t xconn, xcb_window_t win)
+static xcb_cursor_t create_invisible_cursor(x_connection_t xconn)
 {
 	xcb_pixmap_t         pixmap;
 	xcb_gcontext_t       gc;
@@ -140,15 +132,6 @@ static void hide_cursor(x_connection_t xconn, xcb_window_t win)
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't create cursor", xconn);
 
-	cookie = xcb_change_window_attributes_checked(xconn.conn, win,
-						      XCB_CW_CURSOR, &cursor);
-	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("can't change window attributes", xconn);
-
-	cookie = xcb_free_cursor_checked(xconn.conn, cursor);
-	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("can't free cursor", xconn);
-
 	cookie = xcb_free_gc_checked(xconn.conn, gc);
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't free graphics context", xconn);
@@ -156,6 +139,18 @@ static void hide_cursor(x_connection_t xconn, xcb_window_t win)
 	cookie = xcb_free_pixmap_checked(xconn.conn, pixmap);
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't free pixmap", xconn);
+
+	return cursor;
+}
+
+static void free_cursor(x_connection_t xconn, xcb_cursor_t cursor)
+{
+	xcb_void_cookie_t    cookie;
+	xcb_generic_error_t *err;
+
+	cookie = xcb_free_cursor_checked(xconn.conn, cursor);
+	err = xcb_request_check(xconn.conn, cookie);
+	if (err) error("can't free cursor", xconn);
 }
 
 static xcb_window_t get_input_focus(x_connection_t xconn)
@@ -223,18 +218,16 @@ int main(int argc, char *argv[])
 
 	xconn = connect_x();
 	win = create_input_window(xconn, get_input_focus(xconn));
-	if (!grab_pointer(xconn, win)) {
+	// TODO: confine pointer to window?
+	if (!grab_pointer(xconn, win, create_invisible_cursor(xconn))) {
 		error("isn't possible to grab pointer", xconn);
 
 		return EXIT_FAILURE;
 	}
 
-	// TODO: confine pointer to window?
-	hide_cursor(xconn, win);
 	xcb_flush(xconn.conn);
 	sleep(4); // TODO: quitar include si no usamos sleep()
 	//wait_pointer_movement(xconn);
-
 	ungrab_pointer(xconn);
 
 	disconnect_x(xconn);
