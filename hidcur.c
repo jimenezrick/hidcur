@@ -1,3 +1,12 @@
+/*
+ *                                                      ()-()
+ * hidcur - Utility for hiding the mouse cursor in X11   \"/
+ *                                                        `
+ * This program is licensed under WTFPL, see COPYING for details.
+ *
+ * Ricardo Catalinas Jiménez <jimenezrick@gmail.com>
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -26,6 +35,13 @@ typedef struct {
 } pointer_info_t;
 
 static void error(const char *msg, x_connection_t xconn);
+static x_connection_t connect_x(void);
+static void disconnect_x(x_connection_t xconn);
+static void set_screen(x_connection_t *xconn);
+static bool grab_pointer(x_connection_t xconn, xcb_window_t grab_win, xcb_cursor_t cursor);
+static void ungrab_pointer(x_connection_t xconn);
+static xcb_cursor_t create_invisible_cursor(x_connection_t xconn);
+static void free_cursor(x_connection_t xconn, xcb_cursor_t cursor);
 
 static void error(const char *msg, x_connection_t xconn)
 {
