@@ -56,10 +56,12 @@ static void error(const char *msg, x_connection_t xconn)
 
 static x_connection_t connect_x(void)
 {
-	x_connection_t xconn;
+	x_connection_t xconn = {.conn = NULL};
 
 	xconn.conn = xcb_connect(NULL, &xconn.screen_num);
-	if (!xconn.conn) error("can't connect to server", xconn);
+	if (xcb_connection_has_error(xconn.conn))
+		error("can't connect to server", xconn);
+
 	set_screen(&xconn);
 
 	return xconn;
