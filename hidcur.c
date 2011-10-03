@@ -273,12 +273,5 @@ int main(int argc, char *argv[])
 
 	disconnect_x(xconn);
 
-	/*
-	 * XXX XXX XXX
-	 * each screen needs its own empty cursor.
-	 * note each real root id so can find which screen we are on
-	 * XXX XXX XXX
-	 */
-
 	return EXIT_SUCCESS;
 }
