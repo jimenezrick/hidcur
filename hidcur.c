@@ -231,6 +231,7 @@ static pointer_info_t query_pointer(x_connection_t xconn)
 	return info;
 }
 
+// TODO: create_corner_window
 static xcb_window_t create_window(x_connection_t xconn, xcb_window_t parent_win)
 {
 	xcb_void_cookie_t    cookie;
