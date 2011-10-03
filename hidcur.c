@@ -248,7 +248,7 @@ int main(int argc, char *argv[])
 	}
 
 	xcb_flush(xconn.conn);
-	sleep(4); // TODO: quitar include si no usamos sleep()
+	pause(); // TODO: quitar include si no usamos sleep()
 	//wait_pointer_movement(xconn);
 	ungrab_pointer(xconn);
 
