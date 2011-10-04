@@ -26,8 +26,6 @@ typedef struct {
 } x_connection_t;
 
 typedef struct {
-	xcb_window_t root_win, child_win;
-	bool         same_screen;
 	int16_t      x, y;
 } pointer_info_t;
 
@@ -205,13 +203,10 @@ static pointer_info_t query_pointer(x_connection_t xconn)
 	xcb_generic_error_t       *err;
 	pointer_info_t             info;
 
-	cookie = xcb_query_pointer(xconn.conn, get_input_focus(xconn));
+	cookie = xcb_query_pointer(xconn.conn, xconn.screen->root);
 	reply = xcb_query_pointer_reply(xconn.conn, cookie, &err);
 	if (err) error("can't query pointer", xconn);
 
-	info.root_win = reply->root;
-	info.child_win = reply->child;
-	info.same_screen = reply->same_screen;
 	info.x = reply->root_x;
 	info.y = reply->root_y;
 	free(reply);
