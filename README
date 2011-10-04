@@ -1,28 +1,35 @@
                                                        ()-()
   hidcur - Utility for hiding the mouse cursor in X11   \"/
 =======================================================  `
-
-Whenever the pointer is idle for more than the specified interval, hidcur
-creates an input window which grabs the pointer and sets an empty pixmap
-cursor. Under any pointer activity, motion or button event, the window
-is destroyed and the cursor recovers its original appearance.
+Whenever the pointer is idle for more than the specified interval,
+hidcur creates an input window which grabs the pointer and sets an empty
+pixmap cursor. Under any pointer activity, motion or button event, the
+window is destroyed and the cursor recovers its original appearance.
 
 
  Usage
 -------
+Run this program from a terminal, application launcher or from your
+.xinitrc. The default interval is 4 seconds or other if specified:
 
-hidcur <interval> | -h
+	hidcur [<interval> | -h]
+
+
+ Installation
+--------------
+Build and then install as root (by default in /usr/local) with:
+
+	make
+	make install
 
 
  Dependencies
 --------------
-
 The XCB library and headers.
 
 
  Bugs
 ------
-
 Please report to:
 
 	Ricardo Catalinas Jiménez <jimenezrick@gmail.com>
@@ -30,5 +37,4 @@ Please report to:
 
  License
 ---------
-
 This program is licensed under WTFPL, see COPYING for details.
