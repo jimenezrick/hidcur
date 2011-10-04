@@ -16,7 +16,8 @@
 
 #include <xcb/xcb.h>
 
-#define MOUSE_MASK XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS
+#define DEFAULT_INTERVAL 2
+#define MOUSE_MASK       XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS
 
 typedef struct {
 	xcb_connection_t *conn;
@@ -46,6 +47,7 @@ static void wait_pointer_idle(x_connection_t xconn, int interval);
 static void wait_pointer_movement(x_connection_t xconn);
 static bool hide_cursor(x_connection_t xconn, xcb_window_t *win);
 static void show_cursor(x_connection_t xconn, xcb_window_t win);
+static void usage(const char *prog_name);
 
 static void error(const char *msg, x_connection_t xconn)
 {
@@ -76,7 +78,7 @@ static void disconnect_x(x_connection_t xconn)
 static void set_screen(x_connection_t *xconn)
 {
 	xcb_screen_iterator_t it;
-	int screen_num = xconn->screen_num;
+	int                   screen_num = xconn->screen_num;
 
 	xconn->screen = NULL;
 	it = xcb_setup_roots_iterator(xcb_get_setup(xconn->conn));
@@ -294,14 +296,27 @@ static void show_cursor(x_connection_t xconn, xcb_window_t win)
 	destroy_window(xconn, win);
 }
 
+static void usage(const char *prog_name)
+{
+	fprintf(stderr, "Usage: %s <interval> | -h\n", prog_name);
+
+	exit(EXIT_FAILURE);
+}
+
 int main(int argc, char *argv[])
 {
 	x_connection_t xconn;
 	xcb_window_t   win;
+	int            interval = DEFAULT_INTERVAL;
+
+	if (argc == 2 && !strcmp(argv[1], "-h") || argc > 2)
+		usage(argv[1]);
+	else if (argc == 2 && sscanf(argv[1], "%d", &interval) != 1)
+		usage(argv[1]);
 
 	xconn = connect_x();
 	for (;;) {
-		wait_pointer_idle(xconn, 2);
+		wait_pointer_idle(xconn, interval);
 		if (!hide_cursor(xconn, &win))
 			continue;
 		wait_pointer_movement(xconn);
