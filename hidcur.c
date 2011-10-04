@@ -309,7 +309,7 @@ int main(int argc, char *argv[])
 	xcb_window_t   win;
 	int            interval = DEFAULT_INTERVAL;
 
-	if (argc == 2 && !strcmp(argv[1], "-h") || argc > 2)
+	if ((argc == 2 && !strcmp(argv[1], "-h")) || argc > 2)
 		usage(argv[1]);
 	else if (argc == 2 && sscanf(argv[1], "%d", &interval) != 1)
 		usage(argv[1]);
