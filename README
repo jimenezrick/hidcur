@@ -2,7 +2,7 @@
   hidcur - Utility for hiding the mouse cursor in X11   \"/
 =======================================================  `
 
-Whenever the pointer is idle for more than the specified seconds, hidcur
+Whenever the pointer is idle for more than the specified interval, hidcur
 creates an input window which grabs the pointer and sets an empty pixmap
 cursor. Under any pointer activity, motion or button event, the window
 is destroyed and the cursor recovers its original appearance.
