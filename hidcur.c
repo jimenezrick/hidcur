@@ -30,6 +30,8 @@ typedef struct {
 	int16_t      x, y;
 } pointer_info_t;
 
+static const char *PROG_NAME;
+
 static void error(const char *msg, x_connection_t xconn);
 static x_connection_t connect_x(void);
 static void disconnect_x(x_connection_t xconn);
@@ -46,12 +48,12 @@ static void wait_pointer_idle(x_connection_t xconn, int interval);
 static void wait_pointer_movement(x_connection_t xconn);
 static bool hide_cursor(x_connection_t xconn, xcb_window_t *win);
 static void show_cursor(x_connection_t xconn, xcb_window_t win);
-static void usage(const char *prog_name);
+static void usage(void);
 
 static void error(const char *msg, x_connection_t xconn)
 {
-	fprintf(stderr, "Error: %s\n", msg);
 	disconnect_x(xconn);
+	fprintf(stderr, "%s: %s\n", PROG_NAME, msg);
 
 	exit(EXIT_FAILURE);
 }
@@ -62,7 +64,7 @@ static x_connection_t connect_x(void)
 
 	xconn.conn = xcb_connect(NULL, &xconn.screen_num);
 	if (xcb_connection_has_error(xconn.conn))
-		error("can't connect to server", xconn);
+		error("can't connect to X server", xconn);
 
 	set_screen(&xconn);
 
@@ -264,7 +266,7 @@ static void wait_pointer_movement(x_connection_t xconn)
 	xcb_generic_event_t *event;
 
 	event = xcb_wait_for_event(xconn.conn);
-	if (!event) error("I/O error happened", xconn);
+	if (!event) error("X server shut down connection", xconn);
 
 	if (event->response_type != XCB_MOTION_NOTIFY &&
 	    event->response_type != XCB_BUTTON_PRESS) {
@@ -295,9 +297,9 @@ static void show_cursor(x_connection_t xconn, xcb_window_t win)
 	destroy_window(xconn, win);
 }
 
-static void usage(const char *prog_name)
+static void usage(void)
 {
-	fprintf(stderr, "Usage: %s [<interval> | -h]\n", prog_name);
+	fprintf(stderr, "Usage: %s [<interval> | -h]\n", PROG_NAME);
 
 	exit(EXIT_FAILURE);
 }
@@ -308,10 +310,11 @@ int main(int argc, char *argv[])
 	xcb_window_t   win;
 	int            interval = DEFAULT_INTERVAL;
 
+	PROG_NAME = argv[0];
 	if ((argc == 2 && !strcmp(argv[1], "-h")) || argc > 2)
-		usage(argv[0]);
+		usage();
 	else if (argc == 2 && sscanf(argv[1], "%d", &interval) != 1)
-		usage(argv[0]);
+		usage();
 
 	xconn = connect_x();
 	for (;;) {
