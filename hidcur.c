@@ -275,7 +275,13 @@ static void wait_pointer_movement(x_connection_t xconn)
 
 static bool hide_cursor(x_connection_t xconn, xcb_window_t *win)
 {
-	*win = create_input_window(xconn, get_input_focus(xconn));
+	xcb_window_t focus_win;
+
+	focus_win = get_input_focus(xconn);
+	if (focus_win == xconn.screen->root)
+		return false;
+
+	*win = create_input_window(xconn, focus_win);
 	if (!grab_pointer(xconn, *win, create_invisible_cursor(xconn)))
 		return false;
 
