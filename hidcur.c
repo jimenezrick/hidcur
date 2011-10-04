@@ -16,7 +16,8 @@
 
 #include <xcb/xcb.h>
 
-#define MOUSE_MASK XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS
+#define MOUSE_MASK XCB_EVENT_MASK_POINTER_MOTION | \
+		   XCB_EVENT_MASK_BUTTON_PRESS
 
 typedef struct {
 	xcb_connection_t *conn;
@@ -45,9 +46,10 @@ static pointer_info_t query_pointer(x_connection_t xconn);
 static xcb_window_t create_input_window(x_connection_t xconn, xcb_window_t parent_win);
 static void destroy_window(x_connection_t xconn, xcb_window_t win);
 static void wait_pointer_idle(x_connection_t xconn, int interval);
-static void wait_pointer_movement(x_connection_t xconn);
+static uint8_t wait_event(x_connection_t xconn);
+static void drop_pending_events(x_connection_t xconn);
 static bool hide_cursor(x_connection_t xconn, xcb_window_t *win);
-static void show_cursor(x_connection_t xconn, xcb_window_t win);
+static void show_cursor(x_connection_t xconn, xcb_window_t win, bool destroy_win);
 static void usage(void);
 
 static void error(const char *msg, x_connection_t xconn)
@@ -222,11 +224,12 @@ static xcb_window_t create_input_window(x_connection_t xconn, xcb_window_t paren
 	xcb_void_cookie_t    cookie;
 	xcb_window_t         win;
 	xcb_generic_error_t *err;
+	uint32_t             mask = XCB_EVENT_MASK_STRUCTURE_NOTIFY;
 
 	win = xcb_generate_id(xconn.conn);
 	cookie = xcb_create_window_checked(xconn.conn, 0, win, parent_win,
 					   0, 0, 1, 1, 0, XCB_WINDOW_CLASS_INPUT_ONLY,
-					   XCB_COPY_FROM_PARENT, 0, NULL);
+					   XCB_COPY_FROM_PARENT, XCB_CW_EVENT_MASK, &mask);
 	err = xcb_request_check(xconn.conn, cookie);
 	if (err) error("can't create window", xconn);
 
@@ -261,19 +264,33 @@ static void wait_pointer_idle(x_connection_t xconn, int interval)
 	}
 }
 
-static void wait_pointer_movement(x_connection_t xconn)
+static uint8_t wait_event(x_connection_t xconn)
+{
+	xcb_generic_event_t *event;
+	uint8_t              response_type;
+
+	while ((event = xcb_wait_for_event(xconn.conn)) != NULL) {
+		response_type = event->response_type;
+		free(event);
+
+		if (response_type == XCB_MOTION_NOTIFY ||
+		    response_type == XCB_BUTTON_PRESS  ||
+		    response_type == XCB_DESTROY_NOTIFY)
+			return response_type;
+	}
+	error("X server shut down connection", xconn);
+
+	return 0;
+}
+
+static void drop_pending_events(x_connection_t xconn)
 {
 	xcb_generic_event_t *event;
 
-	event = xcb_wait_for_event(xconn.conn);
-	if (!event) error("X server shut down connection", xconn);
-
-	if (event->response_type != XCB_MOTION_NOTIFY &&
-	    event->response_type != XCB_BUTTON_PRESS) {
+	while ((event = xcb_poll_for_event(xconn.conn)) != NULL)
 		free(event);
-		error("unknown event", xconn);
-	}
-	free(event);
+	if (xcb_connection_has_error(xconn.conn))
+		error("X server shut down connection", xconn);
 }
 
 static bool hide_cursor(x_connection_t xconn, xcb_window_t *win)
@@ -291,10 +308,12 @@ static bool hide_cursor(x_connection_t xconn, xcb_window_t *win)
 	return true;
 }
 
-static void show_cursor(x_connection_t xconn, xcb_window_t win)
+static void show_cursor(x_connection_t xconn, xcb_window_t win, bool destroy_win)
 {
 	ungrab_pointer(xconn);
-	destroy_window(xconn, win);
+	if (destroy_win)
+		destroy_window(xconn, win);
+	drop_pending_events(xconn);
 }
 
 static void usage(void)
@@ -309,6 +328,7 @@ int main(int argc, char *argv[])
 	x_connection_t xconn;
 	xcb_window_t   win;
 	int            interval = DEFAULT_INTERVAL;
+	uint8_t        event;
 
 	PROG_NAME = argv[0];
 	if ((argc == 2 && !strcmp(argv[1], "-h")) || argc > 2)
@@ -321,10 +341,9 @@ int main(int argc, char *argv[])
 		wait_pointer_idle(xconn, interval);
 		if (!hide_cursor(xconn, &win))
 			continue;
-		wait_pointer_movement(xconn);
-		show_cursor(xconn, win);
+		event = wait_event(xconn);
+		show_cursor(xconn, win, event != XCB_DESTROY_NOTIFY);
 	}
-	disconnect_x(xconn);
 
 	return EXIT_SUCCESS;
 }

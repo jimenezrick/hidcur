@@ -1,2 +1,0 @@
-- Handle when the parent window is destroyed so we go back to monitor
-  the mouse.
