@@ -16,8 +16,7 @@
 
 #include <xcb/xcb.h>
 
-#define DEFAULT_INTERVAL 2
-#define MOUSE_MASK       XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS
+#define MOUSE_MASK XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS
 
 typedef struct {
 	xcb_connection_t *conn;
@@ -298,7 +297,7 @@ static void show_cursor(x_connection_t xconn, xcb_window_t win)
 
 static void usage(const char *prog_name)
 {
-	fprintf(stderr, "Usage: %s <interval> | -h\n", prog_name);
+	fprintf(stderr, "Usage: %s [<interval> | -h]\n", prog_name);
 
 	exit(EXIT_FAILURE);
 }
