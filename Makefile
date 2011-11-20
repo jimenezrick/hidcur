@@ -11,7 +11,7 @@ all: hidcur
 hidcur: hidcur.o
 
 install:
-	install hidcur $(PREFIX)/bin/hidcur
+	install hidcur $(DESTDIR)$(PREFIX)/bin/hidcur
 
 clean:
 	rm -f hidcur.o hidcur
