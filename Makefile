@@ -10,7 +10,7 @@ all: hidcur
 
 hidcur: hidcur.o
 
-install:
+install: all
 	install hidcur $(DESTDIR)$(PREFIX)/bin/hidcur
 
 clean:
