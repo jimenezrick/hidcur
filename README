@@ -10,7 +10,7 @@ window is destroyed and the cursor recovers its original appearance.
  Usage
 -------
 Run this program from a terminal, application launcher or from your
-.xinitrc. The default interval is 4 seconds or other if specified:
+.xinitrc. The default interval is 2 seconds or other if specified:
 
 	hidcur [<interval> | -h]
 
