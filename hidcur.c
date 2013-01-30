@@ -294,7 +294,7 @@ static bool hide_cursor(x_connection_t xconn, xcb_window_t *win)
 	xcb_window_t focus_win;
 
 	focus_win = get_input_focus(xconn);
-	if (focus_win == xconn.screen->root)
+	if (focus_win == xconn.screen->root || focus_win == XCB_INPUT_FOCUS_POINTER_ROOT || focus_win == XCB_NONE)
 		return false;
 
 	*win = create_input_window(xconn, focus_win);
