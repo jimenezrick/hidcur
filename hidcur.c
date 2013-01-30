@@ -219,7 +219,7 @@ static xcb_window_t create_input_window(x_connection_t xconn, xcb_window_t paren
 	xcb_void_cookie_t    cookie;
 	xcb_window_t         win;
 	xcb_generic_error_t *err;
-	uint32_t             mask = XCB_EVENT_MASK_STRUCTURE_NOTIFY;
+	uint32_t             mask = XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_LEAVE_WINDOW;
 
 	win = xcb_generate_id(xconn.conn);
 	cookie = xcb_create_window_checked(xconn.conn, 0, win, parent_win,
@@ -270,6 +270,7 @@ static uint8_t wait_event(x_connection_t xconn)
 
 		if (response_type == XCB_MOTION_NOTIFY ||
 		    response_type == XCB_BUTTON_PRESS  ||
+		    response_type == XCB_LEAVE_NOTIFY  ||
 		    response_type == XCB_DESTROY_NOTIFY)
 			return response_type;
 	}
