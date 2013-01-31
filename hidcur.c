@@ -219,7 +219,8 @@ static xcb_window_t create_input_window(x_connection_t xconn, xcb_window_t paren
 	xcb_void_cookie_t    cookie;
 	xcb_window_t         win;
 	xcb_generic_error_t *err;
-	uint32_t             mask = XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_LEAVE_WINDOW;
+	uint32_t             mask = XCB_EVENT_MASK_STRUCTURE_NOTIFY |
+				    XCB_EVENT_MASK_LEAVE_WINDOW;
 
 	win = xcb_generate_id(xconn.conn);
 	cookie = xcb_create_window_checked(xconn.conn, 0, win, parent_win,
@@ -294,7 +295,9 @@ static bool hide_cursor(x_connection_t xconn, xcb_window_t *win)
 	xcb_window_t focus_win;
 
 	focus_win = get_input_focus(xconn);
-	if (focus_win == xconn.screen->root || focus_win == XCB_INPUT_FOCUS_POINTER_ROOT || focus_win == XCB_NONE)
+	if (focus_win == xconn.screen->root           ||
+	    focus_win == XCB_INPUT_FOCUS_POINTER_ROOT ||
+	    focus_win == XCB_NONE)
 		return false;
 
 	*win = create_input_window(xconn, focus_win);
