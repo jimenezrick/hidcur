@@ -241,9 +241,14 @@ static void destroy_window(x_connection_t xconn, xcb_window_t win)
 	xcb_void_cookie_t    cookie;
 	xcb_generic_error_t *err;
 
+	/*
+	 * It is possible the window is already destroyed when the notification
+	 * is received, thus drop the error to drain the internal queue and just
+	 * ignore it if this happens.
+	 */
 	cookie = xcb_destroy_window_checked(xconn.conn, win);
 	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("can't destroy window", xconn);
+	free(err);
 }
 
 static void wait_pointer_idle(x_connection_t xconn, int interval)
