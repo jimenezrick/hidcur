@@ -26,12 +26,13 @@ typedef struct {
 } x_connection_t;
 
 typedef struct {
-	int16_t      x, y;
+	int16_t x, y;
 } pointer_info_t;
 
+x
 static const char *PROG_NAME;
 
-static void error(const char *msg, x_connection_t xconn);
+static void error(x_connection_t xconn, const char *msg);
 static x_connection_t connect_x(void);
 static void disconnect_x(x_connection_t xconn);
 static void set_screen(x_connection_t *xconn);
@@ -50,7 +51,7 @@ static bool hide_cursor(x_connection_t xconn, xcb_window_t *win);
 static void show_cursor(x_connection_t xconn, xcb_window_t win, bool destroy_win);
 static void usage(void);
 
-static void error(const char *msg, x_connection_t xconn)
+static void error(x_connection_t xconn, const char *msg)
 {
 	disconnect_x(xconn);
 	fprintf(stderr, "%s: %s\n", PROG_NAME, msg);
@@ -64,7 +65,7 @@ static x_connection_t connect_x(void)
 
 	xconn.conn = xcb_connect(NULL, &xconn.screen_num);
 	if (xcb_connection_has_error(xconn.conn))
-		error("can't connect to X server", xconn);
+		error(xconn, "can't connect to X server");
 
 	set_screen(&xconn);
 
@@ -89,7 +90,7 @@ static void set_screen(x_connection_t *xconn)
 			break;
 		}
 	}
-	if (!xconn->screen) error("can't find screen", *xconn);
+	if (!xconn->screen) error(*xconn, "can't find screen");
 }
 
 static bool grab_pointer(x_connection_t xconn, xcb_window_t grab_win, xcb_cursor_t cursor)
@@ -103,7 +104,7 @@ static bool grab_pointer(x_connection_t xconn, xcb_window_t grab_win, xcb_cursor
 				  XCB_WINDOW_NONE, cursor,
 				  XCB_TIME_CURRENT_TIME);
 	reply = xcb_grab_pointer_reply(xconn.conn, cookie, &err);
-	if (err) error("can't grab pointer", xconn);
+	if (err) error(xconn, "can't grab pointer");
 
 	free_cursor(xconn, cursor);
 	if (reply->status != XCB_GRAB_STATUS_SUCCESS) {
@@ -123,7 +124,7 @@ static void ungrab_pointer(x_connection_t xconn)
 
 	cookie = xcb_ungrab_pointer_checked(xconn.conn, XCB_CURRENT_TIME);
 	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("can't ungrab pointer", xconn);
+	if (err) error(xconn, "can't ungrab pointer");
 }
 
 static xcb_cursor_t create_invisible_cursor(x_connection_t xconn)
@@ -140,31 +141,31 @@ static xcb_cursor_t create_invisible_cursor(x_connection_t xconn)
 	cookie = xcb_create_pixmap_checked(xconn.conn, 1, pixmap,
 					   xconn.screen->root, 1, 1);
 	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("can't create pixmap", xconn);
+	if (err) error(xconn, "can't create pixmap");
 
 	gc = xcb_generate_id(xconn.conn);
 	cookie = xcb_create_gc_checked(xconn.conn, gc, pixmap,
 				       XCB_GC_FUNCTION, &fun);
 	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("can't create graphics context", xconn);
+	if (err) error(xconn, "can't create graphics context");
 
 	cookie = xcb_poly_fill_rectangle_checked(xconn.conn, pixmap, gc, 1, &rect);
 	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("can't fill rectangle", xconn);
+	if (err) error(xconn, "can't fill rectangle");
 
 	cursor = xcb_generate_id(xconn.conn);
 	cookie = xcb_create_cursor_checked(xconn.conn, cursor, pixmap, pixmap,
 					   0, 0, 0, 0, 0, 0, 0, 0);
 	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("can't create cursor", xconn);
+	if (err) error(xconn, "can't create cursor");
 
 	cookie = xcb_free_gc_checked(xconn.conn, gc);
 	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("can't free graphics context", xconn);
+	if (err) error(xconn, "can't free graphics context");
 
 	cookie = xcb_free_pixmap_checked(xconn.conn, pixmap);
 	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("can't free pixmap", xconn);
+	if (err) error(xconn, "can't free pixmap");
 
 	return cursor;
 }
@@ -176,7 +177,7 @@ static void free_cursor(x_connection_t xconn, xcb_cursor_t cursor)
 
 	cookie = xcb_free_cursor_checked(xconn.conn, cursor);
 	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("can't free cursor", xconn);
+	if (err) error(xconn, "can't free cursor");
 }
 
 static xcb_window_t get_input_focus(x_connection_t xconn)
@@ -188,7 +189,7 @@ static xcb_window_t get_input_focus(x_connection_t xconn)
 
 	cookie = xcb_get_input_focus(xconn.conn);
 	reply = xcb_get_input_focus_reply(xconn.conn, cookie, &err);
-	if (err) error("can't get input focus", xconn);
+	if (err) error(xconn, "can't get input focus");
 
 	focus = reply->focus;
 	free(reply);
@@ -205,7 +206,7 @@ static pointer_info_t query_pointer(x_connection_t xconn)
 
 	cookie = xcb_query_pointer(xconn.conn, xconn.screen->root);
 	reply = xcb_query_pointer_reply(xconn.conn, cookie, &err);
-	if (err) error("can't query pointer", xconn);
+	if (err) error(xconn, "can't query pointer");
 
 	info.x = reply->root_x;
 	info.y = reply->root_y;
@@ -227,11 +228,11 @@ static xcb_window_t create_input_window(x_connection_t xconn, xcb_window_t paren
 					   0, 0, 1, 1, 0, XCB_WINDOW_CLASS_INPUT_ONLY,
 					   XCB_COPY_FROM_PARENT, XCB_CW_EVENT_MASK, &mask);
 	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("can't create window", xconn);
+	if (err) error(xconn, "can't create window");
 
 	cookie = xcb_map_window_checked(xconn.conn, win);
 	err = xcb_request_check(xconn.conn, cookie);
-	if (err) error("can't map window", xconn);
+	if (err) error(xconn, "can't map window");
 
 	return win;
 }
@@ -280,7 +281,7 @@ static uint8_t wait_event(x_connection_t xconn)
 		    response_type == XCB_DESTROY_NOTIFY)
 			return response_type;
 	}
-	error("X server shut down connection", xconn);
+	error(xconn, "X server shut down connection");
 
 	return 0;
 }
@@ -292,7 +293,7 @@ static void drop_pending_events(x_connection_t xconn)
 	while ((event = xcb_poll_for_event(xconn.conn)) != NULL)
 		free(event);
 	if (xcb_connection_has_error(xconn.conn))
-		error("X server shut down connection", xconn);
+		error(xconn, "X server shut down connection");
 }
 
 static bool hide_cursor(x_connection_t xconn, xcb_window_t *win)
