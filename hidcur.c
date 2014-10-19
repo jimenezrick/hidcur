@@ -52,7 +52,7 @@ static xcb_window_t create_input_window(x_connection_t xconn, xcb_window_t paren
 static void destroy_window(x_connection_t xconn, xcb_window_t win);
 static void wait_pointer_idle(x_connection_t xconn, int interval);
 static int watch_signal(int signum);
-static uint8_t wait_event(x_connection_t *xconn, int interval);
+static int wait_event(x_connection_t *xconn, int interval);
 static uint8_t poll_event(x_connection_t xconn);
 static void drop_pending_events(x_connection_t xconn);
 static bool hide_cursor(x_connection_t xconn, xcb_window_t *win);
@@ -269,22 +269,95 @@ static void wait_pointer_idle(x_connection_t xconn, int interval)
 {
 	pointer_info_t old_info, info;
 
-	old_info = query_pointer(xconn);
 	for (;;) {
-		sleep(interval);
-		info = query_pointer(xconn);
-		if (info.x == old_info.x && info.y == old_info.y)
-			break;
-		old_info = info;
+		old_info = query_pointer(xconn);
+		for (;;) {
+			if (wait_event(NULL, interval) == -1)
+				break;
+
+			info = query_pointer(xconn);
+			if (info.x == old_info.x && info.y == old_info.y)
+				return;
+			old_info = info;
+		}
 	}
 }
 
-static uint8_t wait_event(x_connection_t xconn)
+static int watch_signal(int signum)
+{
+	static int sfd = -1;
+	sigset_t   mask;
+
+	if (sfd == -1) {
+		sigemptyset(&mask);
+		sigaddset(&mask, signum);
+		if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1)
+			perror_exit("sigprocmask");
+		if ((sfd = signalfd(-1, &mask, 0)) == -1)
+			perror_exit("signalfd");
+	}
+
+	return sfd;
+}
+
+static int wait_event(x_connection_t *xconn, int interval)
+{
+	static bool   enabled = true;
+	int           sfd = watch_signal(SIGUSR1);
+	struct pollfd fds[2] = {[0] = {sfd, POLLIN}};
+	int           nfds = 1;
+	int           timeout = -1;
+
+	if (enabled) {
+		if (xconn != NULL) {
+			fds[1] = (struct pollfd) {xcb_get_file_descriptor(xconn->conn), POLLIN};
+			nfds = 2;
+		}
+		timeout = interval > 0 ? interval * 1000 : -1;
+	}
+
+	for (;;) {
+		uint8_t ev;
+		struct signalfd_siginfo si;
+
+		switch (poll(fds, nfds, timeout)) {
+		case -1:
+			perror_exit("poll");
+		case 0:
+			return 0;
+		default:
+			for (int i = 0; i < nfds; i++) {
+				if (fds[i].revents & (POLLERR | POLLNVAL)) {
+					fprintf(stderr, "%s: %s\n", PROG_NAME, "poll: an error occurred");
+					exit(EXIT_FAILURE);
+				} else if (fds[i].revents & POLLIN) {
+					switch (i) {
+					case 0:
+						enabled ^= true;
+						fprintf(stderr, "%s: %s\n", PROG_NAME, enabled ? "enabled" : "disabled");
+
+						if (read(sfd, &si, sizeof(struct signalfd_siginfo)) == -1)
+							perror_exit("read");
+
+						return -1;
+					case 1:
+						if ((ev = poll_event(*xconn)) != 0)
+							return ev;
+					}
+				}
+			}
+		}
+	}
+
+	return 0;
+}
+
+static uint8_t poll_event(x_connection_t xconn)
 {
 	xcb_generic_event_t *event;
 	uint8_t              response_type;
 
-	while ((event = xcb_wait_for_event(xconn.conn)) != NULL) {
+	while ((event = xcb_poll_for_event(xconn.conn)) != NULL) {
 		response_type = event->response_type;
 		free(event);
 
@@ -294,7 +367,9 @@ static uint8_t wait_event(x_connection_t xconn)
 		    response_type == XCB_DESTROY_NOTIFY)
 			return response_type;
 	}
-	error(xconn, "X server shut down connection");
+
+	if (xcb_connection_has_error(xconn.conn))
+		xerror_exit(xconn, "X server shut down connection");
 
 	return 0;
 }
